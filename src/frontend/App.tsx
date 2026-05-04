@@ -163,7 +163,6 @@ export default function App() {
               setPendingAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))
             }
             onClearAttachments={() => setPendingAttachments([])}
-            onNotesChanged={() => setPdfDataVersion((version) => version + 1)}
           />
         </main>
       ) : (

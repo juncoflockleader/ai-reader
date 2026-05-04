@@ -12,7 +12,6 @@ type Props = {
   attachments: ChatAttachment[];
   onRemoveAttachment: (attachmentId: string) => void;
   onClearAttachments: () => void;
-  onNotesChanged: () => void;
 };
 
 const chatModes = [
@@ -30,8 +29,7 @@ export default function AssistantPanel({
   draftQuestion,
   attachments,
   onRemoveAttachment,
-  onClearAttachments,
-  onNotesChanged
+  onClearAttachments
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
@@ -163,7 +161,6 @@ export default function AssistantPanel({
         })
       });
       setSavedNoteKeys((current) => new Set(current).add(key));
-      onNotesChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save note.");
     }
