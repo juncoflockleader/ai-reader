@@ -1,0 +1,171 @@
+import { BookOpen, Library, Upload, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api, type Book } from "./api";
+import PdfPanel from "./components/pdf/PdfPanel";
+import AssistantPanel from "./components/assistant/AssistantPanel";
+import BookManager from "./components/books/BookManager";
+import ProviderSettings from "./components/settings/ProviderSettings";
+
+export default function App() {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [activeBook, setActiveBook] = useState<Book | null>(null);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const lastBookId = localStorage.getItem("studyreader:lastBookId");
+    const savedPage = lastBookId ? Number(localStorage.getItem(`studyreader:${lastBookId}:page`) ?? "1") : 1;
+    return Number.isFinite(savedPage) && savedPage > 0 ? savedPage : 1;
+  });
+  const [selectedText, setSelectedText] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [booksOpen, setBooksOpen] = useState(false);
+  const [settingsVersion, setSettingsVersion] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    refreshBooks();
+  }, []);
+
+  useEffect(() => {
+    if (!activeBook) return;
+    localStorage.setItem("studyreader:lastBookId", activeBook.id);
+    const savedPage = Number(localStorage.getItem(`studyreader:${activeBook.id}:page`) ?? "1");
+    const maxPage = activeBook.page_count || savedPage || 1;
+    setCurrentPage(Number.isFinite(savedPage) && savedPage > 0 ? Math.min(savedPage, maxPage) : 1);
+  }, [activeBook?.id]);
+
+  async function refreshBooks() {
+    const result = await api<{ books: Book[] }>("/api/books");
+    setBooks(result.books);
+    setActiveBook((current) => {
+      const lastBookId = localStorage.getItem("studyreader:lastBookId");
+      if (!current) return result.books.find((book) => book.id === lastBookId) ?? result.books[0] ?? null;
+      return result.books.find((book) => book.id === current.id) ?? result.books.find((book) => book.id === lastBookId) ?? result.books[0] ?? null;
+    });
+  }
+
+  async function refreshBooksAfterManagement(activeBookId?: string | null) {
+    const result = await api<{ books: Book[] }>("/api/books");
+    setBooks(result.books);
+    setActiveBook(activeBookId ? result.books.find((book) => book.id === activeBookId) ?? result.books[0] ?? null : result.books[0] ?? null);
+  }
+
+  async function uploadPdf(file: File) {
+    setError("");
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("pdf", file);
+      const result = await api<{ book_id: string }>("/api/books", { method: "POST", body: form });
+      await refreshBooks();
+      const created = await api<{ book: Book }>(`/api/books/${result.book_id}`);
+      setActiveBook(created.book);
+      setCurrentPage(1);
+      localStorage.setItem("studyreader:lastBookId", created.book.id);
+      localStorage.setItem(`studyreader:${created.book.id}:page`, "1");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function updateCurrentPage(page: number) {
+    setCurrentPage(page);
+    if (activeBook) {
+      localStorage.setItem("studyreader:lastBookId", activeBook.id);
+      localStorage.setItem(`studyreader:${activeBook.id}:page`, String(page));
+    }
+  }
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <BookOpen size={22} />
+          <span>StudyReader AI</span>
+        </div>
+        <div className="library-strip">
+          {books.map((book) => (
+            <button
+              key={book.id}
+              className={book.id === activeBook?.id ? "book-tab active" : "book-tab"}
+              onClick={() => {
+                setActiveBook(book);
+                setSelectedText("");
+              }}
+              title={book.file_name}
+            >
+              {book.title ?? book.file_name}
+            </button>
+          ))}
+        </div>
+        <label className="icon-button" title="Upload PDF">
+          <Upload size={18} />
+          <input
+            type="file"
+            accept="application/pdf"
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadPdf(file);
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
+        <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings">
+          <Settings size={18} />
+        </button>
+        <button className="icon-button" onClick={() => setBooksOpen(true)} title="Manage books">
+          <Library size={18} />
+        </button>
+      </header>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {activeBook ? (
+        <main className="workspace">
+          <PdfPanel
+            book={activeBook}
+            currentPage={currentPage}
+            onPageChange={updateCurrentPage}
+            selectedText={selectedText}
+            onSelectedText={setSelectedText}
+          />
+          <AssistantPanel
+            book={activeBook}
+            currentPage={currentPage}
+            selectedText={selectedText}
+            onNavigate={updateCurrentPage}
+            settingsVersion={settingsVersion}
+          />
+        </main>
+      ) : (
+        <main className="empty-state">
+          <BookOpen size={42} />
+          <h1>Open a PDF textbook</h1>
+          <p>Upload a local PDF to extract page text, build searchable chunks, and start reading with cited AI help.</p>
+          <label className="primary-button">
+            <Upload size={18} />
+            {uploading ? "Processing..." : "Upload PDF"}
+            <input type="file" accept="application/pdf" onChange={(event) => event.target.files?.[0] && void uploadPdf(event.target.files[0])} />
+          </label>
+        </main>
+      )}
+
+      {booksOpen && (
+        <BookManager
+          books={books}
+          activeBook={activeBook}
+          onClose={() => setBooksOpen(false)}
+          onBooksChanged={(activeBookId) => void refreshBooksAfterManagement(activeBookId)}
+        />
+      )}
+      {settingsOpen && (
+        <ProviderSettings
+          onClose={() => setSettingsOpen(false)}
+          onSaved={() => setSettingsVersion((version) => version + 1)}
+        />
+      )}
+    </div>
+  );
+}
