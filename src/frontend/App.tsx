@@ -1,6 +1,6 @@
 import { BookOpen, Library, Upload, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api, type Book } from "./api";
+import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
 import AssistantPanel from "./components/assistant/AssistantPanel";
 import BookManager from "./components/books/BookManager";
@@ -16,6 +16,7 @@ export default function App() {
   });
   const [selectedText, setSelectedText] = useState("");
   const [draftQuestion, setDraftQuestion] = useState<{ id: number; text: string } | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [booksOpen, setBooksOpen] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -94,6 +95,7 @@ export default function App() {
               onClick={() => {
                 setActiveBook(book);
                 setSelectedText("");
+                setPendingAttachments([]);
               }}
               title={book.file_name}
             >
@@ -134,6 +136,13 @@ export default function App() {
             selectedText={selectedText}
             onSelectedText={setSelectedText}
             onDraftQuestion={(text) => setDraftQuestion({ id: Date.now(), text })}
+            onScreenshot={(attachment) => {
+              setPendingAttachments((current) => [...current, attachment]);
+              setDraftQuestion({
+                id: Date.now(),
+                text: "Explain the attached screenshot from the PDF. Focus on the selected area and connect it to the surrounding page context."
+              });
+            }}
           />
           <AssistantPanel
             key={`assistant-${activeBook.id}-${userDataVersion}`}
@@ -143,6 +152,11 @@ export default function App() {
             onNavigate={updateCurrentPage}
             settingsVersion={settingsVersion}
             draftQuestion={draftQuestion}
+            attachments={pendingAttachments}
+            onRemoveAttachment={(attachmentId) =>
+              setPendingAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))
+            }
+            onClearAttachments={() => setPendingAttachments([])}
           />
         </main>
       ) : (
@@ -167,6 +181,7 @@ export default function App() {
           onUserDataCleared={(bookId) => {
             if (activeBook?.id === bookId) {
               setSelectedText("");
+              setPendingAttachments([]);
               setDraftQuestion(null);
               setCurrentPage(1);
               localStorage.setItem(`studyreader:${bookId}:page`, "1");

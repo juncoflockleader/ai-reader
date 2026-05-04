@@ -9,7 +9,7 @@ export class OpenAIProvider implements LLMProvider {
     const client = new OpenAI({ apiKey });
     const response = await client.chat.completions.create({
       model: request.model,
-      messages: request.messages,
+      messages: request.messages.map(toOpenAIMessage),
       temperature: request.temperature ?? 0.2,
       max_tokens: request.maxTokens ?? 1200
     });
@@ -23,4 +23,21 @@ export class OpenAIProvider implements LLMProvider {
       }
     };
   }
+}
+
+function toOpenAIMessage(message: ChatRequest["messages"][number]): OpenAI.Chat.Completions.ChatCompletionMessageParam {
+  if (message.role === "system") return { role: "system", content: message.content };
+  if (message.role === "assistant") return { role: "assistant", content: message.content };
+  return {
+    role: "user",
+    content: message.attachments?.length
+      ? [
+          { type: "text", text: message.content },
+          ...message.attachments.map((attachment) => ({
+            type: "image_url" as const,
+            image_url: { url: attachment.dataUrl }
+          }))
+        ]
+      : message.content
+  };
 }

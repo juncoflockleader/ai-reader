@@ -10,6 +10,11 @@ type ChatSettings = {
   defaultProvider: ProviderId;
   providers: Record<ProviderId, { model: string }>;
 };
+type ImageAttachment = {
+  type: "image";
+  dataUrl: string;
+  mimeType: string;
+};
 
 router.post("/", async (req, res, next) => {
   try {
@@ -29,6 +34,7 @@ router.post("/", async (req, res, next) => {
     });
     const providerId = (req.body.provider ?? settings.defaultProvider) as ProviderId;
     const model = normalizeModel(providerId, req.body.model ?? settings.providers[providerId].model);
+    const attachments = normalizeAttachments(req.body.attachments);
     const apiKey = getApiKey(providerId);
     if (!apiKey) {
       res.status(400).json({ error: `Missing ${providerId} API key. Add it in Settings before asking AI questions.` });
@@ -41,7 +47,8 @@ router.post("/", async (req, res, next) => {
       currentPage: req.body.current_page,
       selectedText: req.body.selected_text,
       conversationId: req.body.conversation_id,
-      mode: req.body.mode
+      mode: req.body.mode,
+      attachmentCount: attachments.length
     });
     const provider = getProvider(providerId);
     const conversationId = req.body.conversation_id ?? createConversation(bookId, question);
@@ -54,7 +61,7 @@ router.post("/", async (req, res, next) => {
         maxTokens: 1400,
         messages: [
           { role: "system", content: context.systemInstruction },
-          { role: "user", content: context.userPrompt }
+          { role: "user", content: context.userPrompt, attachments }
         ]
       },
       apiKey
@@ -74,6 +81,18 @@ router.post("/", async (req, res, next) => {
     next(error);
   }
 });
+
+function normalizeAttachments(value: unknown): ImageAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((attachment) => {
+    if (!attachment || typeof attachment !== "object") return [];
+    const candidate = attachment as Record<string, unknown>;
+    if (candidate.type !== "image" || typeof candidate.dataUrl !== "string") return [];
+    const mimeType = typeof candidate.mimeType === "string" ? candidate.mimeType : "image/png";
+    if (!candidate.dataUrl.startsWith(`data:${mimeType};base64,`)) return [];
+    return [{ type: "image" as const, dataUrl: candidate.dataUrl, mimeType }];
+  });
+}
 
 router.get("/books/:bookId/conversations", (req, res) => {
   const conversations = getDb()

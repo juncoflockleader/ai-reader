@@ -12,7 +12,19 @@ export class AnthropicProvider implements LLMProvider {
       .filter((message) => message.role !== "system")
       .map((message) => ({
         role: message.role === "assistant" ? "assistant" as const : "user" as const,
-        content: message.content
+        content: message.attachments?.length
+          ? [
+              { type: "text" as const, text: message.content },
+              ...message.attachments.map((attachment) => ({
+                type: "image" as const,
+                source: {
+                  type: "base64" as const,
+                  media_type: attachment.mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                  data: stripDataUrlPrefix(attachment.dataUrl)
+                }
+              }))
+            ]
+          : message.content
       }));
 
     const response = await client.messages.create({
@@ -32,4 +44,8 @@ export class AnthropicProvider implements LLMProvider {
       }
     };
   }
+}
+
+function stripDataUrlPrefix(dataUrl: string) {
+  return dataUrl.includes(",") ? dataUrl.slice(dataUrl.indexOf(",") + 1) : dataUrl;
 }

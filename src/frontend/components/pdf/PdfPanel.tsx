@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { api, type Book, type Highlight } from "../../api";
+import { api, type Book, type ChatAttachment, type Highlight } from "../../api";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
@@ -14,6 +14,7 @@ type Props = {
   onPageChange: (page: number) => void;
   onSelectedText: (text: string) => void;
   onDraftQuestion: (text: string) => void;
+  onScreenshot: (attachment: ChatAttachment) => void;
 };
 
 type PageData = {
@@ -30,7 +31,7 @@ type PdfContextMenu =
   | { type: "selection"; x: number; y: number; page: number; text: string }
   | { type: "highlight"; x: number; y: number; highlightIds: string[] };
 
-export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion }: Props) {
+export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion, onScreenshot }: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<Record<number, PageData>>({});
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -154,6 +155,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   }
 
   function openSelectionMenu(event: React.MouseEvent<HTMLDivElement>, page: number) {
+    if (event.ctrlKey) {
+      event.preventDefault();
+      setContextMenu(null);
+      return;
+    }
     const highlightedSpan = (event.target as HTMLElement).closest<HTMLElement>(".saved-highlight");
     const highlightIds = highlightedSpan?.dataset.highlightIds?.split(",").filter(Boolean) ?? [];
     if (highlightIds.length > 0) {
@@ -274,6 +280,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             onVisible={() => setVisiblePage(pageNumber)}
             onSelect={(event) => captureSelection(event, pageNumber)}
             onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
+            onScreenshot={onScreenshot}
             loadText={(page) => {
               if (!pages[page]) {
                 api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
@@ -320,6 +327,7 @@ function ReaderPage({
   onVisible,
   onSelect,
   onContextMenu,
+  onScreenshot,
   loadText
 }: {
   pdf: PDFDocumentProxy | null;
@@ -333,13 +341,16 @@ function ReaderPage({
   onVisible: () => void;
   onSelect: (event: React.MouseEvent<HTMLDivElement>) => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onScreenshot: (attachment: ChatAttachment) => void;
   loadText: (page: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
+  const dragStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [fitWidth, setFitWidth] = useState(760);
+  const [captureRect, setCaptureRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const canvasWidth = Math.round(fitWidth * zoom);
 
   useEffect(() => {
@@ -423,13 +434,56 @@ function ReaderPage({
     applyHighlightMarks(textLayerRef.current, highlights);
   }, [highlights]);
 
+  function startAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
+    if (!event.ctrlKey || !canvasRef.current || !surfaceRef.current) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const point = localPoint(event, event.currentTarget);
+    dragStart.current = { ...point, pointerId: event.pointerId };
+    setCaptureRect({ left: point.x, top: point.y, width: 0, height: 0 });
+  }
+
+  function updateAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
+    if (!dragStart.current || dragStart.current.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const point = localPoint(event, event.currentTarget);
+    setCaptureRect(rectFromPoints(dragStart.current, point));
+  }
+
+  function finishAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
+    if (!dragStart.current || dragStart.current.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const start = dragStart.current;
+    const rect = rectFromPoints(start, localPoint(event, event.currentTarget));
+    dragStart.current = null;
+    setCaptureRect(null);
+    if (rect.width < 8 || rect.height < 8 || !canvasRef.current) return;
+    const attachment = captureCanvasRegion(canvasRef.current, rect, pageNumber);
+    if (attachment) onScreenshot(attachment);
+  }
+
+  function cancelAreaCapture() {
+    dragStart.current = null;
+    setCaptureRect(null);
+  }
+
   return (
     <article ref={pageRef} data-page={pageNumber} className={active ? "reader-page active" : "reader-page"}>
-      <div className={shouldRender ? "pdf-page-surface" : "pdf-page-surface placeholder"} ref={surfaceRef} onMouseUp={onSelect} onContextMenu={onContextMenu}>
+      <div
+        className={shouldRender ? "pdf-page-surface" : "pdf-page-surface placeholder"}
+        ref={surfaceRef}
+        onPointerDown={startAreaCapture}
+        onPointerMove={updateAreaCapture}
+        onPointerUp={finishAreaCapture}
+        onPointerCancel={cancelAreaCapture}
+        onMouseUp={onSelect}
+        onContextMenu={onContextMenu}
+      >
         {shouldRender ? (
           <>
             <canvas ref={canvasRef} />
             <div className="textLayer" ref={textLayerRef} />
+            {captureRect && <div className="area-capture-rect" style={captureRect} />}
           </>
         ) : (
           <div className="page-placeholder">Page {pageNumber}</div>
@@ -512,6 +566,50 @@ function bestSelectionText(primary: string, fallback: string) {
   const primaryText = primary.trim();
   const fallbackText = fallback.trim();
   return normalizeText(fallbackText).length > normalizeText(primaryText).length ? fallbackText : primaryText;
+}
+
+function localPoint(event: React.PointerEvent<HTMLDivElement>, element: HTMLDivElement) {
+  const bounds = element.getBoundingClientRect();
+  return {
+    x: clamp(event.clientX - bounds.left, 0, bounds.width),
+    y: clamp(event.clientY - bounds.top, 0, bounds.height)
+  };
+}
+
+function rectFromPoints(start: { x: number; y: number }, end: { x: number; y: number }) {
+  return {
+    left: Math.min(start.x, end.x),
+    top: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y)
+  };
+}
+
+function captureCanvasRegion(canvas: HTMLCanvasElement, rect: { left: number; top: number; width: number; height: number }, page: number): ChatAttachment | null {
+  const cssWidth = canvas.clientWidth;
+  const cssHeight = canvas.clientHeight;
+  if (!cssWidth || !cssHeight) return null;
+  const scaleX = canvas.width / cssWidth;
+  const scaleY = canvas.height / cssHeight;
+  const sourceX = Math.round(rect.left * scaleX);
+  const sourceY = Math.round(rect.top * scaleY);
+  const sourceWidth = Math.round(rect.width * scaleX);
+  const sourceHeight = Math.round(rect.height * scaleY);
+  if (sourceWidth < 8 || sourceHeight < 8) return null;
+  const output = document.createElement("canvas");
+  output.width = sourceWidth;
+  output.height = sourceHeight;
+  const context = output.getContext("2d");
+  if (!context) return null;
+  context.drawImage(canvas, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+  return {
+    id: `shot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    type: "image",
+    dataUrl: output.toDataURL("image/png"),
+    mimeType: "image/png",
+    page,
+    label: `Screenshot from page ${page}`
+  };
 }
 
 function clamp(value: number, min: number, max: number) {

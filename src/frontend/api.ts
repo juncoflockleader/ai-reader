@@ -23,8 +23,18 @@ export type Highlight = {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  attachments?: ChatAttachment[];
   citations?: Array<{ page: number; chunk_id?: string; quote: string }>;
   context?: unknown;
+};
+
+export type ChatAttachment = {
+  id: string;
+  type: "image";
+  dataUrl: string;
+  mimeType: string;
+  page: number;
+  label: string;
 };
 
 export type ProviderId = "openai" | "anthropic";

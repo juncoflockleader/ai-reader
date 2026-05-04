@@ -16,6 +16,7 @@ export type ContextAssemblyInput = {
   selectedText?: string;
   conversationId?: string;
   mode?: AnswerMode;
+  attachmentCount?: number;
 };
 
 export type AssembledContext = {
@@ -91,6 +92,9 @@ Current reading state:
 
 Selected text:
 ${input.selectedText ? truncate(input.selectedText, 4500) : "No selected text provided."}
+
+Attached screenshots:
+${input.attachmentCount ? `${input.attachmentCount} screenshot(s) from the PDF canvas are attached to this message. Use visual details from them when relevant.` : "No screenshots attached."}
 
 Current and nearby page context:
 ${nearbyPages.map((page) => `[p. ${page.pdf_page_number}]\n${truncate(page.clean_text, 3000)}`).join("\n\n") || "No current page context available."}

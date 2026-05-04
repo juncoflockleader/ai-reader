@@ -1,6 +1,13 @@
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
+  attachments?: ChatAttachment[];
+};
+
+export type ChatAttachment = {
+  type: "image";
+  dataUrl: string;
+  mimeType: string;
 };
 
 export type ChatRequest = {
