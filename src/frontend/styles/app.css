@@ -137,6 +137,20 @@ button:disabled {
   border-bottom: 1px solid #d3dbdf;
 }
 
+.zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.zoom-controls span {
+  min-width: 48px;
+  color: #59686d;
+  font-size: 13px;
+  text-align: center;
+}
+
 .page-stepper {
   display: flex;
   align-items: center;
@@ -194,18 +208,6 @@ button:disabled {
   background: #fff;
 }
 
-.selection-chip {
-  margin: 10px 12px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
-  border: 1px solid #e0c85f;
-  border-radius: 7px;
-  background: #fff5b8;
-  color: #4a3d0c;
-}
-
 .bookmark-strip {
   flex: 0 0 auto;
   display: flex;
@@ -232,79 +234,135 @@ button:disabled {
   color: #fff;
 }
 
-.selection-chip span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .pdf-scroll {
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 18px;
+  padding: 18px 12px;
 }
 
 .reader-page {
-  width: min(880px, 100%);
+  width: max-content;
+  min-width: 100%;
   margin: 0 auto 18px;
-  padding: 12px;
-  border: 1px solid #cbd4d8;
-  border-radius: 8px;
-  background: #fbfbfa;
-  box-shadow: 0 12px 28px rgba(36, 54, 61, 0.11);
+  display: flex;
+  justify-content: center;
 }
 
 .reader-page.active {
-  outline: 2px solid #2f6f7e;
+  outline: 0;
 }
 
-.page-label {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #66767c;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.pdf-page-surface {
+  position: relative;
+  margin: 0 auto;
+  overflow: clip;
+  background: #fff;
+  border: 1px solid #d7dde0;
+  box-shadow: 0 12px 28px rgba(36, 54, 61, 0.11);
+}
+
+.pdf-page-surface.placeholder {
+  width: min(760px, 100%);
+  height: 1040px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #c9d2d5;
+  background: #f7faf9;
+  color: #819094;
 }
 
 .reader-page canvas {
-  max-width: 100%;
   height: auto;
   display: block;
-  margin: 0 auto;
-  border: 1px solid #e1e5e7;
   background: #fff;
 }
 
-.page-text {
-  margin-top: 10px;
-  max-height: 260px;
-  overflow: auto;
-  padding: 12px;
-  border: 1px solid #d8e0e3;
-  border-radius: 7px;
-  background: #f7faf9;
-  white-space: pre-wrap;
-  line-height: 1.55;
-  font-size: 14px;
-  color: #29383e;
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-align: initial;
   user-select: text;
+  transform-origin: 0 0;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  caret-color: CanvasText;
+  z-index: 0;
 }
 
-.highlight-list {
-  margin-top: 10px;
+.textLayer span,
+.textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+}
+
+.textLayer span.markedContent {
+  top: 0;
+  height: 0;
+}
+
+.textLayer span[role="img"] {
+  user-select: none;
+  cursor: default;
+}
+
+.textLayer span.saved-highlight {
+  background: rgba(255, 221, 87, 0.5);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(232, 190, 37, 0.24);
+}
+
+.textLayer ::selection {
+  background: rgba(78, 148, 172, 0.35);
+}
+
+.selection-menu {
+  position: fixed;
+  z-index: 20;
   display: grid;
-  gap: 8px;
+  gap: 4px;
+  width: 190px;
+  padding: 6px;
+  border: 1px solid #cbd6d7;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(24, 32, 37, 0.2);
 }
 
-.highlight-card {
+.selection-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 9px 10px;
-  border-left: 4px solid #e2bf23;
-  border-radius: 6px;
-  background: #fff8c6;
-  font-size: 13px;
-  line-height: 1.45;
+  border-radius: 7px;
+  background: transparent;
+  color: #263a40;
+  text-align: left;
+}
+
+.selection-menu button:hover {
+  background: #edf4f2;
+}
+
+.selection-menu button.danger-menu-item {
+  color: #92351e;
+}
+
+.selection-menu button.danger-menu-item:hover {
+  background: #ffece6;
 }
 
 .assistant-panel {
@@ -616,7 +674,7 @@ button:disabled {
 
 .book-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   gap: 8px;
   align-items: center;
   padding: 10px;
@@ -649,6 +707,11 @@ button:disabled {
 .tool-button.danger {
   background: #ffe3dc;
   color: #92351e;
+}
+
+.tool-button.warning {
+  background: #fff2ce;
+  color: #6d4b00;
 }
 
 @media (max-width: 900px) {

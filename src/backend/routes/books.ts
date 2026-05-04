@@ -72,6 +72,26 @@ router.delete("/:bookId", (req, res) => {
   res.json({ ok: true });
 });
 
+router.delete("/:bookId/user-data", (req, res) => {
+  const db = getDb();
+  const book = db.prepare("SELECT id FROM books WHERE id = ?").get(req.params.bookId);
+  if (!book) {
+    res.status(404).json({ error: "Book not found." });
+    return;
+  }
+  db.exec("BEGIN");
+  try {
+    db.prepare("DELETE FROM highlights WHERE book_id = ?").run(req.params.bookId);
+    db.prepare("DELETE FROM conversations WHERE book_id = ?").run(req.params.bookId);
+    db.prepare("UPDATE books SET updated_at = ? WHERE id = ?").run(nowIso(), req.params.bookId);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  res.json({ ok: true });
+});
+
 router.post("/:bookId/reanalyze", async (req, res, next) => {
   try {
     const book = getDb().prepare("SELECT id FROM books WHERE id = ?").get(req.params.bookId);

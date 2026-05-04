@@ -1,5 +1,6 @@
-import { Bookmark, BookmarkPlus, Highlighter, Search, X } from "lucide-react";
+import { Bookmark, BookmarkPlus, Highlighter, MessageSquareText, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api, type Book, type Highlight } from "../../api";
@@ -12,6 +13,7 @@ type Props = {
   selectedText: string;
   onPageChange: (page: number) => void;
   onSelectedText: (text: string) => void;
+  onDraftQuestion: (text: string) => void;
 };
 
 type PageData = {
@@ -19,13 +21,25 @@ type PageData = {
   clean_text: string;
 };
 
-export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText }: Props) {
+type PdfTextLayer = {
+  render: () => Promise<void>;
+  cancel: () => void;
+};
+
+type PdfContextMenu =
+  | { type: "selection"; x: number; y: number; page: number; text: string }
+  | { type: "highlight"; x: number; y: number; highlightIds: string[] };
+
+export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion }: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<Record<number, PageData>>({});
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [query, setQuery] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [contextMenu, setContextMenu] = useState<PdfContextMenu | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
+  const selectionCache = useRef<{ page: number; text: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +54,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       cancelled = true;
     };
   }, [book.id]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!currentPage) return;
@@ -68,21 +93,27 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   }, [book.page_count, pages, query]);
 
   async function saveHighlight() {
-    if (!selectedText.trim()) return;
+    await saveHighlightForSelection(selectedText, currentPage);
+  }
+
+  async function saveHighlightForSelection(text: string, page: number) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
     await api(`/api/books/${book.id}/highlights`, {
       method: "POST",
       body: JSON.stringify({
-        page_number: currentPage,
-        selected_text: selectedText.trim(),
+        page_number: page,
+        selected_text: trimmed,
         color: "yellow",
         anchor: {
-          page_index: currentPage - 1,
-          selected_text: selectedText.trim()
+          page_index: page - 1,
+          selected_text: trimmed
         }
       })
     });
     const result = await api<{ highlights: Highlight[] }>(`/api/books/${book.id}/highlights`);
     setHighlights(result.highlights);
+    setContextMenu(null);
   }
 
   async function saveBookmark() {
@@ -108,12 +139,55 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     setHighlights((current) => current.filter((highlight) => highlight.id !== highlightId));
   }
 
-  function captureSelection(page: number) {
-    const text = window.getSelection()?.toString().trim() ?? "";
+  async function deleteHighlights(highlightIds: string[]) {
+    await Promise.all(highlightIds.map((highlightId) => api(`/api/highlights/${highlightId}`, { method: "DELETE" })));
+    setHighlights((current) => current.filter((highlight) => !highlightIds.includes(highlight.id)));
+    setContextMenu(null);
+  }
+
+  function captureSelection(event: React.MouseEvent<HTMLDivElement>, page: number) {
+    const text = readPdfSelection(event.currentTarget);
     if (text) {
+      selectionCache.current = { page, text };
       onSelectedText(text);
-      onPageChange(page);
     }
+  }
+
+  function openSelectionMenu(event: React.MouseEvent<HTMLDivElement>, page: number) {
+    const highlightedSpan = (event.target as HTMLElement).closest<HTMLElement>(".saved-highlight");
+    const highlightIds = highlightedSpan?.dataset.highlightIds?.split(",").filter(Boolean) ?? [];
+    if (highlightIds.length > 0) {
+      event.preventDefault();
+      setContextMenu({
+        type: "highlight",
+        x: Math.min(event.clientX, window.innerWidth - 220),
+        y: Math.min(event.clientY, window.innerHeight - 80),
+        highlightIds
+      });
+      return;
+    }
+    const liveText = readPdfSelection(event.currentTarget);
+    const cached = selectionCache.current?.page === page ? selectionCache.current.text : "";
+    const text = bestSelectionText(liveText, cached);
+    if (!text) {
+      setContextMenu(null);
+      return;
+    }
+    event.preventDefault();
+    onSelectedText(text);
+    setContextMenu({
+      type: "selection",
+      x: Math.min(event.clientX, window.innerWidth - 220),
+      y: Math.min(event.clientY, window.innerHeight - 120),
+      page,
+      text
+    });
+  }
+
+  function draftExplanation(text: string, page: number) {
+    onSelectedText(text);
+    onDraftQuestion(`Explain this selected passage from page ${page} in clear study-friendly terms:\n\n${text}`);
+    setContextMenu(null);
   }
 
   function changePage(page: number) {
@@ -125,6 +199,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   function setVisiblePage(page: number) {
     if (Date.now() < programmaticScrollUntil.current) return;
     onPageChange(page);
+  }
+
+  function changeZoom(delta: number) {
+    setZoom((current) => clamp(Math.round((current + delta) * 10) / 10, 0.7, 2.5));
   }
 
   const bookmarks = highlights.filter((highlight) => highlight.color === "bookmark" || highlight.anchor?.type === "bookmark");
@@ -152,6 +230,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         <button className="tool-button" onClick={saveBookmark} title="Bookmark page">
           <BookmarkPlus size={16} />
         </button>
+        <div className="zoom-controls" aria-label="PDF zoom controls">
+          <button className="tool-button" onClick={() => changeZoom(-0.1)} disabled={zoom <= 0.7} title="Zoom out">
+            <ZoomOut size={16} />
+          </button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button className="tool-button" onClick={() => changeZoom(0.1)} disabled={zoom >= 2.5} title="Zoom in">
+            <ZoomIn size={16} />
+          </button>
+        </div>
       </div>
 
       {bookmarks.length > 0 && (
@@ -172,13 +259,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
 
-      {selectedText && (
-        <div className="selection-chip">
-          <Bookmark size={14} />
-          <span>{selectedText}</span>
-        </div>
-      )}
-
       <div className="pdf-scroll" ref={scrollRef}>
         {visiblePages.map((pageNumber) => (
           <ReaderPage
@@ -186,12 +266,14 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             pdf={pdf}
             bookId={book.id}
             pageNumber={pageNumber}
-            pageData={pages[pageNumber]}
             active={pageNumber === currentPage}
             highlights={pageHighlights.filter((highlight) => highlight.page_number === pageNumber)}
             bookmarked={bookmarks.some((bookmark) => bookmark.page_number === pageNumber)}
+            shouldRender={Math.abs(pageNumber - currentPage) <= 3}
+            zoom={zoom}
             onVisible={() => setVisiblePage(pageNumber)}
-            onSelect={() => captureSelection(pageNumber)}
+            onSelect={(event) => captureSelection(event, pageNumber)}
+            onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
             loadText={(page) => {
               if (!pages[page]) {
                 api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
@@ -202,6 +284,27 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           />
         ))}
       </div>
+      {contextMenu && (
+        <div className="selection-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
+          {contextMenu.type === "selection" ? (
+            <>
+              <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)}>
+                <MessageSquareText size={15} />
+                <span>Explain in chat</span>
+              </button>
+              <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)}>
+                <Highlighter size={15} />
+                <span>Highlight</span>
+              </button>
+            </>
+          ) : (
+            <button className="danger-menu-item" onClick={() => void deleteHighlights(contextMenu.highlightIds)}>
+              <Trash2 size={15} />
+              <span>Remove highlights</span>
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -209,37 +312,46 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
 function ReaderPage({
   pdf,
   pageNumber,
-  pageData,
   active,
   highlights,
   bookmarked,
+  shouldRender,
+  zoom,
   onVisible,
   onSelect,
+  onContextMenu,
   loadText
 }: {
   pdf: PDFDocumentProxy | null;
   bookId: string;
   pageNumber: number;
-  pageData?: PageData;
   active: boolean;
   highlights: Highlight[];
   bookmarked: boolean;
+  shouldRender: boolean;
+  zoom: number;
   onVisible: () => void;
-  onSelect: () => void;
+  onSelect: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
   loadText: (page: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
-  const [canvasWidth, setCanvasWidth] = useState(760);
+  const [fitWidth, setFitWidth] = useState(760);
+  const canvasWidth = Math.round(fitWidth * zoom);
 
   useEffect(() => {
     const element = pageRef.current;
     if (!element) return;
+    const scrollContainer = element.closest<HTMLElement>(".pdf-scroll");
+    if (!scrollContainer) return;
     const resizeObserver = new ResizeObserver(([entry]) => {
-      const nextWidth = Math.max(320, Math.floor(entry.contentRect.width - 24));
-      setCanvasWidth(nextWidth);
+      const nextWidth = Math.max(320, Math.floor(entry.contentRect.width - 86));
+      setFitWidth(nextWidth);
     });
-    resizeObserver.observe(element);
+    resizeObserver.observe(scrollContainer);
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -257,54 +369,149 @@ function ReaderPage({
   }, [loadText, onVisible, pageNumber]);
 
   useEffect(() => {
-    if (!pdf || !canvasRef.current) return;
+    if (!shouldRender || !pdf || !canvasRef.current || !surfaceRef.current || !textLayerRef.current) return;
     let cancelled = false;
     let renderTask: { cancel: () => void; promise: Promise<unknown> } | null = null;
+    let textLayer: PdfTextLayer | null = null;
     pdf.getPage(pageNumber).then(async (page) => {
-      if (cancelled || !canvasRef.current) return;
+      if (cancelled || !canvasRef.current || !surfaceRef.current || !textLayerRef.current) return;
       const baseViewport = page.getViewport({ scale: 1 });
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-      const scale = (canvasWidth / baseViewport.width) * dpr;
+      const scale = canvasWidth / baseViewport.width;
       const viewport = page.getViewport({ scale });
       const canvas = canvasRef.current;
+      const surface = surfaceRef.current;
+      const textLayerElement = textLayerRef.current;
       const context = canvas.getContext("2d");
       if (!context) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = `${Math.round(viewport.width / dpr)}px`;
-      canvas.style.height = `${Math.round(viewport.height / dpr)}px`;
-      renderTask = page.render({ canvasContext: context, viewport });
-      await renderTask.promise.catch((error: unknown) => {
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      canvas.style.width = `${Math.round(viewport.width)}px`;
+      canvas.style.height = `${Math.round(viewport.height)}px`;
+      surface.style.width = `${Math.round(viewport.width)}px`;
+      surface.style.height = `${Math.round(viewport.height)}px`;
+      textLayerElement.replaceChildren();
+      textLayerElement.style.width = `${Math.round(viewport.width)}px`;
+      textLayerElement.style.height = `${Math.round(viewport.height)}px`;
+
+      renderTask = page.render({
+        canvasContext: context,
+        viewport,
+        transform: dpr === 1 ? undefined : [dpr, 0, 0, dpr, 0, 0]
+      });
+      const textContent = await page.getTextContent();
+      textLayer = new pdfjsLib.TextLayer({
+        textContentSource: textContent,
+        container: textLayerElement,
+        viewport
+      }) as PdfTextLayer;
+
+      await Promise.all([renderTask.promise, textLayer.render()]).catch((error: unknown) => {
         if (!cancelled) throw error;
       });
+      if (!cancelled) applyHighlightMarks(textLayerElement, highlights);
     });
     return () => {
       cancelled = true;
       renderTask?.cancel();
+      textLayer?.cancel();
     };
-  }, [pdf, pageNumber, canvasWidth]);
+  }, [pdf, pageNumber, canvasWidth, shouldRender]);
+
+  useEffect(() => {
+    if (!textLayerRef.current) return;
+    applyHighlightMarks(textLayerRef.current, highlights);
+  }, [highlights]);
 
   return (
     <article ref={pageRef} data-page={pageNumber} className={active ? "reader-page active" : "reader-page"}>
-      <div className="page-label">
-        <span>Page {pageNumber}</span>
-        {bookmarked && <Bookmark size={15} />}
+      <div className={shouldRender ? "pdf-page-surface" : "pdf-page-surface placeholder"} ref={surfaceRef} onMouseUp={onSelect} onContextMenu={onContextMenu}>
+        {shouldRender ? (
+          <>
+            <canvas ref={canvasRef} />
+            <div className="textLayer" ref={textLayerRef} />
+          </>
+        ) : (
+          <div className="page-placeholder">Page {pageNumber}</div>
+        )}
       </div>
-      <canvas ref={canvasRef} />
-      <div className="page-text" onMouseUp={onSelect}>
-        {pageData?.clean_text || "Loading extracted text..."}
-      </div>
-      {highlights.length > 0 && (
-        <div className="highlight-list">
-          {highlights.map((highlight) => (
-            <div key={highlight.id} className="highlight-card">
-              {highlight.selected_text}
-            </div>
-          ))}
-        </div>
-      )}
     </article>
   );
+}
+
+function applyHighlightMarks(textLayerElement: HTMLDivElement, highlights: Highlight[]) {
+  const spans = Array.from(textLayerElement.querySelectorAll("span"));
+  for (const span of spans) {
+    span.classList.remove("saved-highlight");
+    delete span.dataset.highlightIds;
+  }
+  for (const highlight of highlights) {
+    const pieces = normalizedPieces(highlight.selected_text);
+    if (pieces.length === 0) continue;
+    for (const span of spans) {
+      const text = normalizeText(span.textContent ?? "");
+      if (!text) continue;
+      if (pieces.some((piece) => piece.length > 2 && (text.includes(piece) || piece.includes(text)))) {
+        span.classList.add("saved-highlight");
+        const ids = span.dataset.highlightIds ? span.dataset.highlightIds.split(",") : [];
+        if (!ids.includes(highlight.id)) {
+          span.dataset.highlightIds = [...ids, highlight.id].join(",");
+        }
+      }
+    }
+  }
+}
+
+function normalizedPieces(text: string) {
+  const normalized = normalizeText(text);
+  if (!normalized) return [];
+  const words = normalized.split(" ").filter(Boolean);
+  const pieces = [normalized];
+  for (let index = 0; index < words.length; index += 4) {
+    const piece = words.slice(index, index + 8).join(" ");
+    if (piece.length > 12) pieces.push(piece);
+  }
+  return pieces;
+}
+
+function normalizeText(text: string) {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function readPdfSelection(surface: EventTarget & HTMLDivElement) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return "";
+  const range = selection.getRangeAt(0);
+  if (!range.intersectsNode(surface)) return "";
+  const nativeText = selection.toString().trim();
+  const spanText = textFromSelectedSpans(surface, range);
+  return bestSelectionText(nativeText, spanText);
+}
+
+function textFromSelectedSpans(surface: HTMLDivElement, range: Range) {
+  const spans = Array.from(surface.querySelectorAll<HTMLSpanElement>(".textLayer span"));
+  const pieces = spans.flatMap((span) => {
+    if (!range.intersectsNode(span)) return [];
+    const text = span.textContent ?? "";
+    if (!text) return [];
+    if (isNodeInside(range.startContainer, span) && isNodeInside(range.endContainer, span)) {
+      return [text.slice(range.startOffset, range.endOffset)];
+    }
+    if (isNodeInside(range.startContainer, span)) return [text.slice(range.startOffset)];
+    if (isNodeInside(range.endContainer, span)) return [text.slice(0, range.endOffset)];
+    return [text];
+  });
+  return pieces.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function isNodeInside(node: Node, element: HTMLElement) {
+  return node === element || element.contains(node);
+}
+
+function bestSelectionText(primary: string, fallback: string) {
+  const primaryText = primary.trim();
+  const fallbackText = fallback.trim();
+  return normalizeText(fallbackText).length > normalizeText(primaryText).length ? fallbackText : primaryText;
 }
 
 function clamp(value: number, min: number, max: number) {

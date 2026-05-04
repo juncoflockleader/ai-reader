@@ -15,9 +15,11 @@ export default function App() {
     return Number.isFinite(savedPage) && savedPage > 0 ? savedPage : 1;
   });
   const [selectedText, setSelectedText] = useState("");
+  const [draftQuestion, setDraftQuestion] = useState<{ id: number; text: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [booksOpen, setBooksOpen] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
+  const [userDataVersion, setUserDataVersion] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -125,18 +127,22 @@ export default function App() {
       {activeBook ? (
         <main className="workspace">
           <PdfPanel
+            key={`pdf-${activeBook.id}-${userDataVersion}`}
             book={activeBook}
             currentPage={currentPage}
             onPageChange={updateCurrentPage}
             selectedText={selectedText}
             onSelectedText={setSelectedText}
+            onDraftQuestion={(text) => setDraftQuestion({ id: Date.now(), text })}
           />
           <AssistantPanel
+            key={`assistant-${activeBook.id}-${userDataVersion}`}
             book={activeBook}
             currentPage={currentPage}
             selectedText={selectedText}
             onNavigate={updateCurrentPage}
             settingsVersion={settingsVersion}
+            draftQuestion={draftQuestion}
           />
         </main>
       ) : (
@@ -158,6 +164,15 @@ export default function App() {
           activeBook={activeBook}
           onClose={() => setBooksOpen(false)}
           onBooksChanged={(activeBookId) => void refreshBooksAfterManagement(activeBookId)}
+          onUserDataCleared={(bookId) => {
+            if (activeBook?.id === bookId) {
+              setSelectedText("");
+              setDraftQuestion(null);
+              setCurrentPage(1);
+              localStorage.setItem(`studyreader:${bookId}:page`, "1");
+              setUserDataVersion((version) => version + 1);
+            }
+          }}
         />
       )}
       {settingsOpen && (

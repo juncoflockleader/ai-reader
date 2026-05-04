@@ -8,6 +8,7 @@ type Props = {
   selectedText: string;
   onNavigate: (page: number) => void;
   settingsVersion: number;
+  draftQuestion: { id: number; text: string } | null;
 };
 
 const modes = [
@@ -19,7 +20,7 @@ const modes = [
   ["quiz_me", "Quiz"]
 ] as const;
 
-export default function AssistantPanel({ book, currentPage, selectedText, onNavigate, settingsVersion }: Props) {
+export default function AssistantPanel({ book, currentPage, selectedText, onNavigate, settingsVersion, draftQuestion }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<(typeof modes)[number][0]>("explain_simple");
@@ -40,6 +41,11 @@ export default function AssistantPanel({ book, currentPage, selectedText, onNavi
       })
       .catch(() => undefined);
   }, [settingsVersion]);
+
+  useEffect(() => {
+    if (!draftQuestion) return;
+    setQuestion(draftQuestion.text);
+  }, [draftQuestion]);
 
   async function ask() {
     if (!question.trim() || busy) return;
@@ -173,7 +179,10 @@ export default function AssistantPanel({ book, currentPage, selectedText, onNavi
           onChange={(event) => setQuestion(event.target.value)}
           placeholder="Why is this important?"
           onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void ask();
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void ask();
+            }
           }}
         />
         <button className="send-button" onClick={ask} disabled={busy || !question.trim()} title="Send">

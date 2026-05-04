@@ -1,4 +1,4 @@
-import { RefreshCw, Trash2, X } from "lucide-react";
+import { Eraser, RefreshCw, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { api, type Book } from "../../api";
 
@@ -7,9 +7,10 @@ type Props = {
   activeBook: Book | null;
   onClose: () => void;
   onBooksChanged: (activeBookId?: string | null) => void;
+  onUserDataCleared: (bookId: string) => void;
 };
 
-export default function BookManager({ books, activeBook, onClose, onBooksChanged }: Props) {
+export default function BookManager({ books, activeBook, onClose, onBooksChanged, onUserDataCleared }: Props) {
   const [editing, setEditing] = useState<Record<string, string>>(() =>
     Object.fromEntries(books.map((book) => [book.id, book.title ?? book.file_name]))
   );
@@ -65,6 +66,24 @@ export default function BookManager({ books, activeBook, onClose, onBooksChanged
     }
   }
 
+  async function clearUserData(book: Book) {
+    const ok = window.confirm(`Remove all saved highlights, notes, and chat history for "${book.title ?? book.file_name}"? The PDF and extracted page text will stay.`);
+    if (!ok) return;
+    setBusyBook(book.id);
+    setStatus("");
+    try {
+      await api(`/api/books/${book.id}/user-data`, { method: "DELETE" });
+      localStorage.removeItem(`studyreader:${book.id}:page`);
+      setStatus("Saved user data removed");
+      onUserDataCleared(book.id);
+      onBooksChanged(activeBook?.id ?? book.id);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not remove saved user data.");
+    } finally {
+      setBusyBook(null);
+    }
+  }
+
   return (
     <div className="modal-backdrop">
       <section className="settings-modal book-manager">
@@ -94,6 +113,9 @@ export default function BookManager({ books, activeBook, onClose, onBooksChanged
               <button onClick={() => rename(book)} disabled={busyBook === book.id}>Save</button>
               <button className="tool-button" onClick={() => reanalyze(book)} disabled={busyBook === book.id} title="Re-analyze">
                 <RefreshCw size={16} />
+              </button>
+              <button className="tool-button warning" onClick={() => clearUserData(book)} disabled={busyBook === book.id} title="Remove saved user data">
+                <Eraser size={16} />
               </button>
               <button className="tool-button danger" onClick={() => deleteBook(book)} disabled={busyBook === book.id} title="Delete">
                 <Trash2 size={16} />
