@@ -1,14 +1,17 @@
 import { Router } from "express";
 import { assembleContext, citationCandidates } from "../services/context/assembleContext";
 import { getProvider, normalizeModel } from "../services/llm";
-import { getDb, id, json, nowIso } from "../services/storage/db";
+import { getDb, id, json, nowIso, parseJson } from "../services/storage/db";
 import { getApiKey, getSetting } from "./settings";
 
 const router = Router();
 type ProviderId = "openai" | "anthropic";
+type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
 type ChatSettings = {
   defaultProvider: ProviderId;
   providers: Record<ProviderId, { model: string }>;
+  modelMode?: "single" | "detailed";
+  chatModels?: Partial<Record<ChatMode, { provider: ProviderId; model: string }>>;
 };
 type ImageAttachment = {
   type: "image";
@@ -29,12 +32,17 @@ router.post("/", async (req, res, next) => {
       defaultProvider: "openai",
       providers: {
         openai: { model: "gpt-4.1-mini" },
-        anthropic: { model: "claude-sonnet-4-20250514" }
+        anthropic: { model: "claude-sonnet-4-6" }
       }
     });
-    const providerId = (req.body.provider ?? settings.defaultProvider) as ProviderId;
-    const model = normalizeModel(providerId, req.body.model ?? settings.providers[providerId].model);
     const attachments = normalizeAttachments(req.body.attachments);
+    const chatMode = normalizeChatMode(req.body.chat_mode);
+    const configuredChoice =
+      settings.modelMode === "detailed" && settings.chatModels?.[chatMode]
+        ? settings.chatModels[chatMode]
+        : { provider: settings.defaultProvider, model: settings.providers[settings.defaultProvider].model };
+    const providerId = normalizeProvider(req.body.provider ?? configuredChoice.provider);
+    const model = normalizeModel(providerId, req.body.model ?? configuredChoice.model ?? settings.providers[providerId].model);
     const apiKey = getApiKey(providerId);
     if (!apiKey) {
       res.status(400).json({ error: `Missing ${providerId} API key. Add it in Settings before asking AI questions.` });
@@ -47,7 +55,8 @@ router.post("/", async (req, res, next) => {
       currentPage: req.body.current_page,
       selectedText: req.body.selected_text,
       conversationId: req.body.conversation_id,
-      mode: req.body.mode,
+      chatMode,
+      followUpMessage: typeof req.body.follow_up_message === "string" ? req.body.follow_up_message : undefined,
       attachmentCount: attachments.length
     });
     const provider = getProvider(providerId);
@@ -58,7 +67,7 @@ router.post("/", async (req, res, next) => {
       {
         model,
         temperature: 0.2,
-        maxTokens: 1400,
+        maxTokens: chatMode === "pdf_thinking" ? 2200 : 900,
         messages: [
           { role: "system", content: context.systemInstruction },
           { role: "user", content: context.userPrompt, attachments }
@@ -67,7 +76,7 @@ router.post("/", async (req, res, next) => {
       apiKey
     );
 
-    const citations = citationCandidates(context.sources);
+    const citations = context.contextDebug.pdfContextIncluded ? citationCandidates(context.sources) : [];
     const messageId = saveMessage(conversationId, "assistant", answer.content, context.contextDebug, citations);
     res.json({
       conversation_id: conversationId,
@@ -81,6 +90,14 @@ router.post("/", async (req, res, next) => {
     next(error);
   }
 });
+
+function normalizeChatMode(value: unknown): ChatMode {
+  return value === "no_context_fast" || value === "pdf_thinking" ? value : "pdf_fast";
+}
+
+function normalizeProvider(value: unknown): ProviderId {
+  return value === "anthropic" ? "anthropic" : "openai";
+}
 
 function normalizeAttachments(value: unknown): ImageAttachment[] {
   if (!Array.isArray(value)) return [];
@@ -101,11 +118,25 @@ router.get("/books/:bookId/conversations", (req, res) => {
   res.json({ conversations });
 });
 
+router.delete("/books/:bookId/conversations", (req, res) => {
+  const result = getDb().prepare("DELETE FROM conversations WHERE book_id = ?").run(req.params.bookId);
+  res.json({ ok: true, deleted: result.changes });
+});
+
 router.get("/conversations/:conversationId/messages", (req, res) => {
   const messages = getDb()
     .prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC")
-    .all(req.params.conversationId);
-  res.json({ messages });
+    .all(req.params.conversationId) as Array<{ role: string; content: string; citations_json: string | null; context_json: string | null }>;
+  res.json({
+    messages: messages
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+        citations: parseJson(message.citations_json, []),
+        context: parseJson(message.context_json, null)
+      }))
+  });
 });
 
 function createConversation(bookId: string, question: string) {

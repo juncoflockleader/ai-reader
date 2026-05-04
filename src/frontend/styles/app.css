@@ -43,7 +43,7 @@ button:disabled {
   height: 58px;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   gap: 10px;
   align-items: center;
   padding: 0 14px;
@@ -91,6 +91,11 @@ button:disabled {
   place-items: center;
   background: #e7ecee;
   color: #27404a;
+}
+
+.tool-button.active {
+  background: #2d675b;
+  color: #fff;
 }
 
 .icon-button input,
@@ -142,6 +147,50 @@ button:disabled {
   align-items: center;
   gap: 6px;
   margin-left: auto;
+}
+
+.ruler-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid #cbd6d7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ruler-size {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #e8eeeb;
+  color: #47585b;
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.ruler-size.active {
+  background: #2d675b;
+  color: #fff;
+}
+
+.ruler-color {
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border: 1px solid #bfcbcb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.ruler-color input {
+  width: 42px;
+  height: 42px;
+  margin: -7px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
 }
 
 .zoom-controls span {
@@ -234,9 +283,15 @@ button:disabled {
   color: #fff;
 }
 
-.pdf-scroll {
+.pdf-scroll-frame {
   min-height: 0;
   flex: 1;
+  position: relative;
+}
+
+.pdf-scroll {
+  width: 100%;
+  height: 100%;
   overflow: auto;
   padding: 18px 12px;
 }
@@ -337,6 +392,21 @@ button:disabled {
   pointer-events: none;
 }
 
+.reading-ruler {
+  position: absolute;
+  z-index: 6;
+  border-top: 1px solid;
+  border-bottom: 1px solid;
+  box-shadow: 0 2px 8px rgba(24, 32, 37, 0.08);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.reading-ruler:active {
+  cursor: grabbing;
+}
+
 .selection-menu {
   position: fixed;
   z-index: 20;
@@ -405,11 +475,28 @@ button:disabled {
 }
 
 .assistant-header select,
-.field select {
+.field select,
+.model-badge {
   border: 1px solid #bfcbcb;
   border-radius: 7px;
   background: #fff;
   padding: 8px 10px;
+}
+
+.assistant-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-badge {
+  color: #405058;
+  white-space: nowrap;
+}
+
+.icon-button.danger {
+  background: #ffe3dc;
+  color: #92351e;
 }
 
 .mode-row {
@@ -418,6 +505,11 @@ button:disabled {
   gap: 6px;
   padding: 10px 12px;
   border-bottom: 1px solid #d7dedc;
+}
+
+.mode-row.compact {
+  grid-template-columns: repeat(3, minmax(0, 120px));
+  justify-content: end;
 }
 
 .mode {
@@ -484,6 +576,17 @@ button:disabled {
   background: #ffffff;
   color: #24363a;
   border: 1px solid #dce3e1;
+}
+
+.history-divider {
+  margin: 12px 0 16px;
+  padding: 8px 10px;
+  border: 1px dashed #bdcac7;
+  border-radius: 8px;
+  background: #f2f6f4;
+  color: #647371;
+  font-size: 13px;
+  text-align: center;
 }
 
 .markdown-body {
@@ -594,6 +697,37 @@ button:disabled {
   padding: 12px;
   border-top: 1px solid #d7dedc;
   background: #fdfefd;
+}
+
+.follow-up-chip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  border: 1px solid #cbd7d4;
+  border-radius: 8px;
+  background: #eef6f2;
+  color: #315147;
+  font-size: 13px;
+}
+
+.follow-up-chip span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.follow-up-chip button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #dce9e4;
+  color: #315147;
 }
 
 .composer-attachments {
@@ -727,6 +861,10 @@ button:disabled {
   color: #314249;
 }
 
+.disabled-field {
+  opacity: 0.46;
+}
+
 .provider-box {
   border: 1px solid #d8e0df;
   border-radius: 8px;
@@ -745,6 +883,43 @@ button:disabled {
 .provider-box h3 {
   margin: 0 0 10px;
   font-size: 16px;
+}
+
+.detailed-models {
+  display: grid;
+  gap: 9px;
+  margin: 12px 0;
+}
+
+.detailed-model-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(110px, 0.5fr) minmax(170px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.detailed-custom-model {
+  grid-column: 3;
+}
+
+.detailed-model-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.detailed-model-row strong {
+  color: #314249;
+}
+
+.detailed-model-row span {
+  color: #6d7b7e;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .check-row {
@@ -775,8 +950,91 @@ button:disabled {
   font-weight: 680;
 }
 
+.link-button:disabled {
+  color: #93a19f;
+  cursor: not-allowed;
+}
+
 .book-manager {
   width: min(860px, 100%);
+}
+
+.notes-manager {
+  width: min(760px, 100%);
+}
+
+.note-list {
+  display: grid;
+  gap: 10px;
+}
+
+.note-row {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.note-row-header,
+.note-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-row-header button,
+.note-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  background: #e6efe7;
+  color: #2e5940;
+}
+
+.note-actions button:last-child {
+  background: #ffe3dc;
+  color: #92351e;
+}
+
+.note-source {
+  max-height: 76px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 7px;
+  background: #f2f6f4;
+  color: #647371;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.note-row p {
+  margin: 0;
+  color: #24363a;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.note-row textarea {
+  min-height: 130px;
+  resize: vertical;
+  border: 1px solid #c5d0ce;
+  border-radius: 8px;
+  padding: 10px;
+  outline: 0;
+}
+
+.empty-note-state {
+  padding: 30px;
+  border: 1px dashed #bdcac7;
+  border-radius: 8px;
+  background: #f2f6f4;
+  color: #647371;
+  text-align: center;
 }
 
 .book-list {
@@ -838,12 +1096,12 @@ button:disabled {
     border-bottom: 1px solid #d0d7dc;
   }
 
-  .mode-row {
+  .mode-row:not(.compact) {
     grid-template-columns: repeat(3, 1fr);
   }
 
   .topbar {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   }
 
   .library-strip {
@@ -852,6 +1110,10 @@ button:disabled {
 
   .book-row {
     grid-template-columns: 1fr auto auto;
+  }
+
+  .detailed-model-row {
+    grid-template-columns: 1fr;
   }
 
   .book-row > button:not(.tool-button) {

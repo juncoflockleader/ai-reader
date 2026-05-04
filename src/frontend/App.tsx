@@ -1,10 +1,11 @@
-import { BookOpen, Library, Upload, Settings } from "lucide-react";
+import { BookOpen, Library, Settings, StickyNote, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
 import AssistantPanel from "./components/assistant/AssistantPanel";
 import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
+import NotesManager from "./components/notes/NotesManager";
 
 export default function App() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -19,8 +20,10 @@ export default function App() {
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [booksOpen, setBooksOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
-  const [userDataVersion, setUserDataVersion] = useState(0);
+  const [pdfDataVersion, setPdfDataVersion] = useState(0);
+  const [assistantResetVersion, setAssistantResetVersion] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -116,6 +119,9 @@ export default function App() {
             }}
           />
         </label>
+        <button className="icon-button" onClick={() => activeBook && setNotesOpen(true)} disabled={!activeBook} title="Notes">
+          <StickyNote size={18} />
+        </button>
         <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings">
           <Settings size={18} />
         </button>
@@ -129,7 +135,7 @@ export default function App() {
       {activeBook ? (
         <main className="workspace">
           <PdfPanel
-            key={`pdf-${activeBook.id}-${userDataVersion}`}
+            key={`pdf-${activeBook.id}-${pdfDataVersion}`}
             book={activeBook}
             currentPage={currentPage}
             onPageChange={updateCurrentPage}
@@ -145,7 +151,7 @@ export default function App() {
             }}
           />
           <AssistantPanel
-            key={`assistant-${activeBook.id}-${userDataVersion}`}
+            key={`assistant-${activeBook.id}-${assistantResetVersion}`}
             book={activeBook}
             currentPage={currentPage}
             selectedText={selectedText}
@@ -157,6 +163,7 @@ export default function App() {
               setPendingAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))
             }
             onClearAttachments={() => setPendingAttachments([])}
+            onNotesChanged={() => setPdfDataVersion((version) => version + 1)}
           />
         </main>
       ) : (
@@ -185,7 +192,8 @@ export default function App() {
               setDraftQuestion(null);
               setCurrentPage(1);
               localStorage.setItem(`studyreader:${bookId}:page`, "1");
-              setUserDataVersion((version) => version + 1);
+              setPdfDataVersion((version) => version + 1);
+              setAssistantResetVersion((version) => version + 1);
             }
           }}
         />
@@ -194,6 +202,14 @@ export default function App() {
         <ProviderSettings
           onClose={() => setSettingsOpen(false)}
           onSaved={() => setSettingsVersion((version) => version + 1)}
+        />
+      )}
+      {notesOpen && activeBook && (
+        <NotesManager
+          book={activeBook}
+          onClose={() => setNotesOpen(false)}
+          onNavigate={updateCurrentPage}
+          onChanged={() => setPdfDataVersion((version) => version + 1)}
         />
       )}
     </div>

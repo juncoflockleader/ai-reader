@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Highlighter, MessageSquareText, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Highlighter, MessageSquareText, Ruler, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
@@ -31,6 +31,20 @@ type PdfContextMenu =
   | { type: "selection"; x: number; y: number; page: number; text: string }
   | { type: "highlight"; x: number; y: number; highlightIds: string[] };
 
+type ReadingRulerHeight = "small" | "medium" | "large";
+
+const rulerHeights: Record<ReadingRulerHeight, number> = {
+  small: 36,
+  medium: 62,
+  large: 96
+};
+
+const rulerHeightLabels: Record<ReadingRulerHeight, string> = {
+  small: "S",
+  medium: "M",
+  large: "L"
+};
+
 export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion, onScreenshot }: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<Record<number, PageData>>({});
@@ -38,9 +52,16 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [query, setQuery] = useState("");
   const [zoom, setZoom] = useState(1);
   const [contextMenu, setContextMenu] = useState<PdfContextMenu | null>(null);
+  const [rulerEnabled, setRulerEnabled] = useState(false);
+  const [rulerHeight, setRulerHeight] = useState<ReadingRulerHeight>("medium");
+  const [rulerColor, setRulerColor] = useState("#5aa9a3");
+  const [rulerTopRatio, setRulerTopRatio] = useState(0.42);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollFrameRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
   const selectionCache = useRef<{ page: number; text: string } | null>(null);
+  const rulerDrag = useRef<{ offsetY: number; pointerId: number } | null>(null);
+  const [rulerBounds, setRulerBounds] = useState({ left: 12, width: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +113,42 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     if (!query.trim()) return all;
     return all.filter((page) => pages[page]?.clean_text.toLowerCase().includes(query.toLowerCase()));
   }, [book.page_count, pages, query]);
+
+  useEffect(() => {
+    if (!rulerEnabled) return;
+    const frame = scrollFrameRef.current;
+    const scroller = scrollRef.current;
+    if (!frame || !scroller) return;
+    let animationFrame = 0;
+    const updateBounds = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        const frameBounds = frame.getBoundingClientRect();
+        const activeSurface = scroller.querySelector<HTMLElement>(`[data-page="${currentPage}"] .pdf-page-surface`);
+        if (!activeSurface) {
+          setRulerBounds({ left: 12, width: Math.max(120, frameBounds.width - 24) });
+          return;
+        }
+        const surfaceBounds = activeSurface.getBoundingClientRect();
+        const left = clamp(surfaceBounds.left - frameBounds.left, 0, Math.max(0, frameBounds.width - 24));
+        const right = clamp(surfaceBounds.right - frameBounds.left, left + 120, frameBounds.width);
+        setRulerBounds({ left, width: Math.max(120, right - left) });
+      });
+    };
+    updateBounds();
+    const resizeObserver = new ResizeObserver(updateBounds);
+    resizeObserver.observe(frame);
+    scroller.addEventListener("scroll", updateBounds);
+    window.addEventListener("resize", updateBounds);
+    const timeout = window.setTimeout(updateBounds, 120);
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.clearTimeout(timeout);
+      resizeObserver.disconnect();
+      scroller.removeEventListener("scroll", updateBounds);
+      window.removeEventListener("resize", updateBounds);
+    };
+  }, [currentPage, rulerEnabled, zoom, visiblePages.length]);
 
   async function saveHighlight() {
     await saveHighlightForSelection(selectedText, currentPage);
@@ -211,8 +268,38 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     setZoom((current) => clamp(Math.round((current + delta) * 10) / 10, 0.7, 2.5));
   }
 
-  const bookmarks = highlights.filter((highlight) => highlight.color === "bookmark" || highlight.anchor?.type === "bookmark");
-  const pageHighlights = highlights.filter((highlight) => highlight.color !== "bookmark" && highlight.anchor?.type !== "bookmark");
+  function startRulerDrag(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rulerRect = event.currentTarget.getBoundingClientRect();
+    rulerDrag.current = {
+      offsetY: event.clientY - rulerRect.top,
+      pointerId: event.pointerId
+    };
+  }
+
+  function updateRulerDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (!scrollFrameRef.current || !rulerDrag.current || rulerDrag.current.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const frameBounds = scrollFrameRef.current.getBoundingClientRect();
+    const height = rulerHeights[rulerHeight];
+    const maxTop = Math.max(1, frameBounds.height - height);
+    const nextTop = clamp(event.clientY - frameBounds.top - rulerDrag.current.offsetY, 0, maxTop);
+    setRulerTopRatio(nextTop / maxTop);
+  }
+
+  function finishRulerDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (!rulerDrag.current || rulerDrag.current.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    rulerDrag.current = null;
+  }
+
+  const displayHighlights = highlights.filter((highlight) => !isAiNote(highlight));
+  const bookmarks = displayHighlights.filter((highlight) => highlight.color === "bookmark" || highlight.anchor?.type === "bookmark");
+  const pageHighlights = displayHighlights.filter((highlight) => highlight.color !== "bookmark" && highlight.anchor?.type !== "bookmark");
 
   return (
     <section className="pdf-panel">
@@ -236,6 +323,26 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         <button className="tool-button" onClick={saveBookmark} title="Bookmark page">
           <BookmarkPlus size={16} />
         </button>
+        <button className={rulerEnabled ? "tool-button active" : "tool-button"} onClick={() => setRulerEnabled((enabled) => !enabled)} title="Reading ruler">
+          <Ruler size={16} />
+        </button>
+        {rulerEnabled && (
+          <div className="ruler-controls" aria-label="Reading ruler controls">
+            {(["small", "medium", "large"] as const).map((height) => (
+              <button
+                key={height}
+                className={rulerHeight === height ? "ruler-size active" : "ruler-size"}
+                onClick={() => setRulerHeight(height)}
+                title={`${height} ruler`}
+              >
+                {rulerHeightLabels[height]}
+              </button>
+            ))}
+            <label className="ruler-color" title="Ruler color">
+              <input type="color" value={rulerColor} onChange={(event) => setRulerColor(event.target.value)} />
+            </label>
+          </div>
+        )}
         <div className="zoom-controls" aria-label="PDF zoom controls">
           <button className="tool-button" onClick={() => changeZoom(-0.1)} disabled={zoom <= 0.7} title="Zoom out">
             <ZoomOut size={16} />
@@ -265,31 +372,51 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
 
-      <div className="pdf-scroll" ref={scrollRef}>
-        {visiblePages.map((pageNumber) => (
-          <ReaderPage
-            key={pageNumber}
-            pdf={pdf}
-            bookId={book.id}
-            pageNumber={pageNumber}
-            active={pageNumber === currentPage}
-            highlights={pageHighlights.filter((highlight) => highlight.page_number === pageNumber)}
-            bookmarked={bookmarks.some((bookmark) => bookmark.page_number === pageNumber)}
-            shouldRender={Math.abs(pageNumber - currentPage) <= 3}
-            zoom={zoom}
-            onVisible={() => setVisiblePage(pageNumber)}
-            onSelect={(event) => captureSelection(event, pageNumber)}
-            onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
-            onScreenshot={onScreenshot}
-            loadText={(page) => {
-              if (!pages[page]) {
-                api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
-                  setPages((current) => ({ ...current, [page]: result.page }))
-                );
-              }
+      <div className="pdf-scroll-frame" ref={scrollFrameRef}>
+        <div className="pdf-scroll" ref={scrollRef}>
+          {visiblePages.map((pageNumber) => (
+            <ReaderPage
+              key={pageNumber}
+              pdf={pdf}
+              bookId={book.id}
+              pageNumber={pageNumber}
+              active={pageNumber === currentPage}
+              highlights={pageHighlights.filter((highlight) => highlight.page_number === pageNumber)}
+              bookmarked={bookmarks.some((bookmark) => bookmark.page_number === pageNumber)}
+              shouldRender={Math.abs(pageNumber - currentPage) <= 3}
+              zoom={zoom}
+              onVisible={() => setVisiblePage(pageNumber)}
+              onSelect={(event) => captureSelection(event, pageNumber)}
+              onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
+              onScreenshot={onScreenshot}
+              loadText={(page) => {
+                if (!pages[page]) {
+                  api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
+                    setPages((current) => ({ ...current, [page]: result.page }))
+                  );
+                }
+              }}
+            />
+          ))}
+        </div>
+        {rulerEnabled && (
+          <div
+            className="reading-ruler"
+            style={{
+              left: `${rulerBounds.left}px`,
+              width: `${rulerBounds.width || 320}px`,
+              height: `${rulerHeights[rulerHeight]}px`,
+              top: `calc(${rulerTopRatio * 100}% - ${rulerTopRatio * rulerHeights[rulerHeight]}px)`,
+              backgroundColor: hexToRgba(rulerColor, 0.28),
+              borderColor: hexToRgba(rulerColor, 0.62)
             }}
+            onPointerDown={startRulerDrag}
+            onPointerMove={updateRulerDrag}
+            onPointerUp={finishRulerDrag}
+            onPointerCancel={finishRulerDrag}
+            title="Drag reading ruler"
           />
-        ))}
+        )}
       </div>
       {contextMenu && (
         <div className="selection-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
@@ -568,6 +695,10 @@ function bestSelectionText(primary: string, fallback: string) {
   return normalizeText(fallbackText).length > normalizeText(primaryText).length ? fallbackText : primaryText;
 }
 
+function isAiNote(highlight: Highlight) {
+  return highlight.anchor?.type === "ai_note" || (highlight.color === "blue" && highlight.selected_text.startsWith("AI note on page "));
+}
+
 function localPoint(event: React.PointerEvent<HTMLDivElement>, element: HTMLDivElement) {
   const bounds = element.getBoundingClientRect();
   return {
@@ -610,6 +741,19 @@ function captureCanvasRegion(canvas: HTMLCanvasElement, rect: { left: number; to
     page,
     label: `Screenshot from page ${page}`
   };
+}
+
+function hexToRgba(hex: string, alpha: number) {
+  const normalized = hex.replace("#", "");
+  const value = normalized.length === 3
+    ? normalized.split("").map((char) => `${char}${char}`).join("")
+    : normalized;
+  const numeric = Number.parseInt(value, 16);
+  if (!Number.isFinite(numeric)) return `rgba(90, 169, 163, ${alpha})`;
+  const red = (numeric >> 16) & 255;
+  const green = (numeric >> 8) & 255;
+  const blue = numeric & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function clamp(value: number, min: number, max: number) {

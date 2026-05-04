@@ -1,6 +1,6 @@
-import { BookMarked, ChevronDown, Save, Send, Sparkles, X } from "lucide-react";
+import { BookMarked, ChevronDown, CornerDownRight, Save, Send, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ProviderId } from "../../api";
+import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice, type ProviderId } from "../../api";
 
 type Props = {
   book: Book;
@@ -12,15 +12,13 @@ type Props = {
   attachments: ChatAttachment[];
   onRemoveAttachment: (attachmentId: string) => void;
   onClearAttachments: () => void;
+  onNotesChanged: () => void;
 };
 
-const modes = [
-  ["explain_simple", "Simple"],
-  ["explain_depth", "Depth"],
-  ["summarize", "Summary"],
-  ["define_terms", "Terms"],
-  ["give_example", "Example"],
-  ["quiz_me", "Quiz"]
+const chatModes = [
+  ["no_context_fast", "No context"],
+  ["pdf_fast", "PDF fast"],
+  ["pdf_thinking", "PDF thinking"]
 ] as const;
 
 export default function AssistantPanel({
@@ -32,16 +30,20 @@ export default function AssistantPanel({
   draftQuestion,
   attachments,
   onRemoveAttachment,
-  onClearAttachments
+  onClearAttachments,
+  onNotesChanged
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
-  const [mode, setMode] = useState<(typeof modes)[number][0]>("explain_simple");
+  const [chatMode, setChatMode] = useState<ChatMode>("pdf_fast");
   const [provider, setProvider] = useState<ProviderId>("openai");
   const [model, setModel] = useState("gpt-4.1-mini");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [followUpMessage, setFollowUpMessage] = useState<{ role: ChatMessage["role"]; content: string } | null>(null);
   const [contextUsed, setContextUsed] = useState<unknown>(null);
+  const [savedNoteKeys, setSavedNoteKeys] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,16 +51,45 @@ export default function AssistantPanel({
     api<AppSettings>("/api/settings")
       .then((settings) => {
         setSettings(settings);
-        setProvider(settings.defaultProvider);
-        setModel(settings.providers[settings.defaultProvider].model);
+        const choice = modelChoiceForMode(settings, chatMode);
+        setProvider(choice.provider);
+        setModel(choice.model);
       })
       .catch(() => undefined);
-  }, [settingsVersion]);
+  }, [settingsVersion, chatMode]);
+
+  useEffect(() => {
+    if (!settings) return;
+    const choice = modelChoiceForMode(settings, chatMode);
+    setProvider(choice.provider);
+    setModel(choice.model);
+  }, [settings, chatMode]);
 
   useEffect(() => {
     if (!draftQuestion) return;
     setQuestion(draftQuestion.text);
   }, [draftQuestion]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMessages([]);
+    setHistoryMessages([]);
+    setConversationId(null);
+    setFollowUpMessage(null);
+    setContextUsed(null);
+    setSavedNoteKeys(new Set());
+    api<{ conversations: Conversation[] }>(`/api/chat/books/${book.id}/conversations`)
+      .then(async (result) => {
+        const latest = result.conversations[0];
+        if (!latest) return;
+        const loaded = await api<{ messages: ChatMessage[] }>(`/api/chat/conversations/${latest.id}/messages`);
+        if (!cancelled) setHistoryMessages(loaded.messages);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [book.id]);
 
   async function ask() {
     if ((!question.trim() && attachments.length === 0) || busy) return;
@@ -66,6 +97,7 @@ export default function AssistantPanel({
     const userText = question.trim() || attachmentOnlyQuestion(outgoingAttachments, currentPage);
     setQuestion("");
     onClearAttachments();
+    setFollowUpMessage(null);
     setError("");
     setBusy(true);
     setMessages((current) => [...current, { role: "user", content: userText, attachments: outgoingAttachments }]);
@@ -88,7 +120,8 @@ export default function AssistantPanel({
             dataUrl: attachment.dataUrl,
             mimeType: attachment.mimeType
           })),
-          mode,
+          chat_mode: chatMode,
+          follow_up_message: followUpMessage ? `${followUpMessage.role}: ${followUpMessage.content}` : undefined,
           provider,
           model
         })
@@ -103,7 +136,7 @@ export default function AssistantPanel({
     }
   }
 
-  async function saveAnswer(content: string) {
+  async function saveAnswer(content: string, key: string) {
     setError("");
     try {
       await api(`/api/books/${book.id}/highlights`, {
@@ -114,13 +147,35 @@ export default function AssistantPanel({
           note: content,
           color: "blue",
           anchor: {
+            type: "ai_note",
             page_index: currentPage - 1,
             selected_text: selectedText
           }
         })
       });
+      setSavedNoteKeys((current) => new Set(current).add(key));
+      onNotesChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save note.");
+    }
+  }
+
+  async function clearChatHistory() {
+    const hasVisibleChat = historyMessages.length > 0 || messages.length > 0 || conversationId !== null;
+    if (!hasVisibleChat || busy) return;
+    const confirmed = window.confirm(`Clear chat history for "${book.title ?? book.file_name}"? Saved notes and highlights will stay.`);
+    if (!confirmed) return;
+    setError("");
+    try {
+      await api(`/api/chat/books/${book.id}/conversations`, { method: "DELETE" });
+      setMessages([]);
+      setHistoryMessages([]);
+      setConversationId(null);
+      setFollowUpMessage(null);
+      setContextUsed(null);
+      setSavedNoteKeys(new Set());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not clear chat history.");
     }
   }
 
@@ -131,64 +186,79 @@ export default function AssistantPanel({
           <h2>Study Assistant</h2>
           <p>Page {currentPage} · {selectedText ? "selection included" : "current page context"} · {model}</p>
         </div>
-        <select
-          value={provider}
-          onChange={(event) => {
-            const nextProvider = event.target.value as ProviderId;
-            setProvider(nextProvider);
-            setModel(settings?.providers[nextProvider].model ?? (nextProvider === "openai" ? "gpt-4.1-mini" : "claude-sonnet-4-20250514"));
-          }}
-          aria-label="LLM provider"
-        >
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Claude</option>
-        </select>
+        <div className="assistant-actions">
+          {settings?.modelMode === "detailed" ? (
+            <div className="model-badge" title="Configured in Settings">
+              {provider === "openai" ? "OpenAI" : "Claude"}
+            </div>
+          ) : (
+            <select
+              value={provider}
+              onChange={(event) => {
+                const nextProvider = event.target.value as ProviderId;
+                setProvider(nextProvider);
+                setModel(settings?.providers[nextProvider].model ?? (nextProvider === "openai" ? "gpt-4.1-mini" : "claude-sonnet-4-6"));
+              }}
+              aria-label="LLM provider"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Claude</option>
+            </select>
+          )}
+          <button
+            className="icon-button danger"
+            onClick={() => void clearChatHistory()}
+            disabled={busy || (historyMessages.length === 0 && messages.length === 0 && conversationId === null)}
+            title="Clear chat history"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
 
-      <div className="mode-row">
-        {modes.map(([value, label]) => (
-          <button key={value} className={mode === value ? "mode active" : "mode"} onClick={() => setMode(value)}>
+      <div className="mode-row compact">
+        {chatModes.map(([value, label]) => (
+          <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)}>
             {label}
           </button>
         ))}
       </div>
 
       <div className="chat-thread">
-        {messages.length === 0 && (
+        {historyMessages.length > 0 && (
+          <>
+            {historyMessages.map((message, index) => (
+              <ChatMessageView
+                key={`history-${index}`}
+                message={message}
+                actionKey={`history-${index}`}
+                saved={savedNoteKeys.has(`history-${index}`)}
+                onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
+                onSaveNote={() => saveAnswer(message.content, `history-${index}`)}
+                onNavigate={onNavigate}
+              />
+            ))}
+            <div className="history-divider">Loaded history above is preserved for reference and will not be considered unless you choose Follow up.</div>
+          </>
+        )}
+        {historyMessages.length === 0 && messages.length === 0 && (
           <div className="assistant-empty">
             <Sparkles size={28} />
             <h3>Ask about the page, a selection, or the whole book.</h3>
           </div>
         )}
         {messages.map((message, index) => (
-          <div key={index} className={`message ${message.role}`}>
-            <div className="message-body">
-              <MarkdownText text={message.content} />
-              {message.attachments && message.attachments.length > 0 && (
-                <div className="message-attachments">
-                  {message.attachments.map((attachment) => (
-                    <img key={attachment.id} src={attachment.dataUrl} alt={attachment.label} />
-                  ))}
-                </div>
-              )}
-            </div>
-            {message.citations && message.citations.length > 0 && (
-              <div className="citation-list">
-                <button onClick={() => saveAnswer(message.content)}>
-                  <Save size={14} />
-                  <span>Save note</span>
-                </button>
-                {message.citations.map((citation, citationIndex) => (
-                  <button key={citationIndex} onClick={() => onNavigate(citation.page)}>
-                    <BookMarked size={14} />
-                    <span>p. {citation.page}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <ChatMessageView
+            key={`current-${index}`}
+            message={message}
+            actionKey={`current-${index}`}
+            saved={savedNoteKeys.has(`current-${index}`)}
+            onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
+            onSaveNote={() => saveAnswer(message.content, `current-${index}`)}
+            onNavigate={onNavigate}
+          />
         ))}
-        {busy && <div className="message assistant"><div className="message-body">Thinking with the local context...</div></div>}
+        {busy && <div className="message assistant"><div className="message-body">{thinkingLabel(chatMode)}</div></div>}
       </div>
 
       {contextUsed !== null && (
@@ -203,6 +273,15 @@ export default function AssistantPanel({
       {error && <div className="inline-error">{error}</div>}
 
       <div className="chat-input">
+        {followUpMessage && (
+          <div className="follow-up-chip">
+            <CornerDownRight size={14} />
+            <span>{truncateForUi(followUpMessage.content, 150)}</span>
+            <button onClick={() => setFollowUpMessage(null)} title="Clear follow-up">
+              <X size={14} />
+            </button>
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className="composer-attachments">
             {attachments.map((attachment) => (
@@ -235,9 +314,76 @@ export default function AssistantPanel({
   );
 }
 
+function modelChoiceForMode(settings: AppSettings, chatMode: ChatMode): ModelChoice {
+  if (settings.modelMode === "detailed") return settings.chatModels[chatMode];
+  return {
+    provider: settings.defaultProvider,
+    model: settings.providers[settings.defaultProvider].model
+  };
+}
+
+function thinkingLabel(chatMode: ChatMode) {
+  if (chatMode === "no_context_fast") return "Thinking without PDF context...";
+  if (chatMode === "pdf_thinking") return "Thinking carefully with PDF context...";
+  return "Thinking with PDF context...";
+}
+
 function attachmentOnlyQuestion(attachments: ChatAttachment[], currentPage: number) {
   const pages = Array.from(new Set(attachments.map((attachment) => attachment.page))).join(", ");
   return `Explain the attached PDF screenshot${attachments.length > 1 ? "s" : ""} from page ${pages || currentPage}.`;
+}
+
+function ChatMessageView({
+  message,
+  actionKey,
+  saved,
+  onFollowUp,
+  onSaveNote,
+  onNavigate
+}: {
+  message: ChatMessage;
+  actionKey: string;
+  saved: boolean;
+  onFollowUp: () => void;
+  onSaveNote: () => void;
+  onNavigate: (page: number) => void;
+}) {
+  return (
+    <div className={`message ${message.role}`}>
+      <div className="message-body">
+        <MarkdownText text={message.content} />
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="message-attachments">
+            {message.attachments.map((attachment) => (
+              <img key={attachment.id} src={attachment.dataUrl} alt={attachment.label} />
+            ))}
+          </div>
+        )}
+      </div>
+      {message.role === "assistant" && (
+        <div className="citation-list">
+          <button onClick={onFollowUp}>
+            <CornerDownRight size={14} />
+            <span>Follow up</span>
+          </button>
+          <button onClick={onSaveNote} disabled={saved} title={saved ? "Note saved" : "Save answer as note"}>
+            <Save size={14} />
+            <span>{saved ? "Saved" : "Save note"}</span>
+          </button>
+          {message.citations?.map((citation, citationIndex) => (
+            <button key={`${actionKey}-citation-${citationIndex}`} onClick={() => onNavigate(citation.page)}>
+              <BookMarked size={14} />
+              <span>p. {citation.page}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function truncateForUi(text: string, max: number) {
+  return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
 function MarkdownText({ text }: { text: string }) {

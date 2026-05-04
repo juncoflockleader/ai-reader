@@ -18,6 +18,8 @@ export type Highlight = {
   color: string;
   note: string | null;
   anchor?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type ChatMessage = {
@@ -26,6 +28,14 @@ export type ChatMessage = {
   attachments?: ChatAttachment[];
   citations?: Array<{ page: number; chunk_id?: string; quote: string }>;
   context?: unknown;
+};
+
+export type Conversation = {
+  id: string;
+  book_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ChatAttachment = {
@@ -38,10 +48,18 @@ export type ChatAttachment = {
 };
 
 export type ProviderId = "openai" | "anthropic";
+export type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
+
+export type ModelChoice = {
+  provider: ProviderId;
+  model: string;
+};
 
 export type AppSettings = {
   defaultProvider: ProviderId;
   providers: Record<ProviderId, { model: string; hasKey: boolean; apiKey?: string }>;
+  modelMode: "single" | "detailed";
+  chatModels: Record<ChatMode, ModelChoice>;
   privacyAcknowledged: boolean;
   keyStorageWarning: string;
   models: Record<ProviderId, string[]>;

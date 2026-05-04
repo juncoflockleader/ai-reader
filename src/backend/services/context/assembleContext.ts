@@ -1,13 +1,7 @@
 import { getDb } from "../storage/db";
 import { getChunksForPage, searchChunks, type SourceSnippet } from "../retrieval/ftsSearch";
 
-export type AnswerMode =
-  | "explain_simple"
-  | "explain_depth"
-  | "summarize"
-  | "define_terms"
-  | "give_example"
-  | "quiz_me";
+export type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
 
 export type ContextAssemblyInput = {
   bookId: string;
@@ -15,8 +9,9 @@ export type ContextAssemblyInput = {
   currentPage?: number;
   selectedText?: string;
   conversationId?: string;
-  mode?: AnswerMode;
+  chatMode?: ChatMode;
   attachmentCount?: number;
+  followUpMessage?: string;
 };
 
 export type AssembledContext = {
@@ -28,6 +23,8 @@ export type AssembledContext = {
     currentPageIncluded: boolean;
     retrievedChunkIds: string[];
     notesIncluded: string[];
+    pdfContextIncluded: boolean;
+    followUpIncluded: boolean;
   };
 };
 
@@ -40,14 +37,16 @@ export function assembleContext(input: ContextAssemblyInput): AssembledContext {
   const db = getDb();
   const book = db.prepare("SELECT id, title, author FROM books WHERE id = ?").get(input.bookId) as BookRow;
   if (!book) throw new Error("Book not found.");
+  const chatMode = input.chatMode ?? "pdf_fast";
+  const includePdfContext = chatMode !== "no_context_fast";
 
-  const currentPage = input.currentPage
+  const currentPage = includePdfContext && input.currentPage
     ? (db
         .prepare("SELECT pdf_page_number, clean_text FROM pages WHERE book_id = ? AND pdf_page_number = ?")
         .get(input.bookId, input.currentPage) as PageRow | undefined)
     : undefined;
 
-  const nearbyPages = input.currentPage
+  const nearbyPages = includePdfContext && input.currentPage
     ? (db
         .prepare(
           `SELECT pdf_page_number, clean_text FROM pages
@@ -58,8 +57,8 @@ export function assembleContext(input: ContextAssemblyInput): AssembledContext {
     : [];
 
   const query = [input.userQuestion, input.selectedText?.slice(0, 500)].filter(Boolean).join("\n");
-  const pageChunks = input.currentPage ? getChunksForPage(input.bookId, input.currentPage) : [];
-  const retrieved = searchChunks(input.bookId, query, input.currentPage, 8);
+  const pageChunks = includePdfContext && input.currentPage ? getChunksForPage(input.bookId, input.currentPage) : [];
+  const retrieved = includePdfContext ? searchChunks(input.bookId, query, input.currentPage, 8) : [];
   const sources = dedupeSources([
     ...pageChunks,
     ...retrieved,
@@ -76,14 +75,17 @@ export function assembleContext(input: ContextAssemblyInput): AssembledContext {
       : [])
   ]);
 
-  const notes = getRelevantNotes(input.bookId, input.currentPage);
+  const notes = includePdfContext ? getRelevantNotes(input.bookId, input.currentPage) : [];
   const history = input.conversationId ? getRecentHistory(input.conversationId) : [];
 
   const userPrompt = `User question:
 ${input.userQuestion}
 
-Answer mode:
-${modeLabel(input.mode ?? "explain_simple")}
+Response mode:
+${chatModeLabel(chatMode)}
+
+Follow-up focus:
+${input.followUpMessage ? truncate(input.followUpMessage, 1800) : "No specific previous message selected."}
 
 Current reading state:
 - Book: ${book.title ?? "Unknown Title"}
@@ -91,19 +93,19 @@ Current reading state:
 - Current page: ${input.currentPage ?? "Not provided"}
 
 Selected text:
-${input.selectedText ? truncate(input.selectedText, 4500) : "No selected text provided."}
+${includePdfContext && input.selectedText ? truncate(input.selectedText, 4500) : includePdfContext ? "No selected text provided." : "PDF selected text intentionally omitted in no-context mode."}
 
 Attached screenshots:
 ${input.attachmentCount ? `${input.attachmentCount} screenshot(s) from the PDF canvas are attached to this message. Use visual details from them when relevant.` : "No screenshots attached."}
 
 Current and nearby page context:
-${nearbyPages.map((page) => `[p. ${page.pdf_page_number}]\n${truncate(page.clean_text, 3000)}`).join("\n\n") || "No current page context available."}
+${includePdfContext ? nearbyPages.map((page) => `[p. ${page.pdf_page_number}]\n${truncate(page.clean_text, 3000)}`).join("\n\n") || "No current page context available." : "PDF context intentionally omitted for speed."}
 
 Retrieved relevant passages:
-${sources
-  .filter((source) => source.chunkId)
-  .map((source) => `[p. ${pageRange(source)} | ${source.chunkId}]\n${truncate(source.text, 2600)}`)
-  .join("\n\n") || "No retrieved passages found."}
+${includePdfContext ? sources
+    .filter((source) => source.chunkId)
+    .map((source) => `[p. ${pageRange(source)} | ${source.chunkId}]\n${truncate(source.text, 2600)}`)
+    .join("\n\n") || "No retrieved passages found." : "PDF retrieval skipped."}
 
 User notes/highlights:
 ${notes.map((note) => `[p. ${note.page_number}] ${note.note ? `${note.note}: ` : ""}${truncate(note.selected_text, 700)}`).join("\n") || "No relevant notes found."}
@@ -112,22 +114,26 @@ Recent conversation:
 ${history.map((message) => `${message.role}: ${truncate(message.content, 600)}`).join("\n") || "No recent conversation."}
 
 Instructions:
-- Answer the user's question directly.
-- Ground book-based claims in citations like [p. 87].
+- Answer the user's question directly and follow the user's requested task or format.
+- If a follow-up focus is provided, treat it as the primary referent for short follow-up questions like "give examples" or "explain more".
+- Ground book-based claims in citations like [p. 87] when PDF context is provided.
 - Do not invent citations or quote text not present in the context.
 - If the provided context is insufficient, say what is missing.
 - If outside knowledge is useful, label it clearly as outside explanation.`;
 
   return {
-    systemInstruction:
-      "You are an AI study assistant helping the user read a textbook. Use the provided book context first. Cite page numbers for book-grounded claims. If outside knowledge is useful, clearly label it as outside explanation. Favor teaching, comprehension, and intellectual honesty.",
+    systemInstruction: includePdfContext
+      ? "You are an AI study assistant helping the user read a textbook. Use the provided book context first. Cite page numbers for book-grounded claims. If outside knowledge is useful, clearly label it as outside explanation. Favor teaching, comprehension, and intellectual honesty."
+      : "You are an AI study assistant. Answer quickly from general knowledge and the user's own words. Do not imply that you checked the PDF, because PDF context was intentionally omitted.",
     userPrompt,
     sources,
     contextDebug: {
-      selectedTextIncluded: Boolean(input.selectedText),
+      selectedTextIncluded: includePdfContext && Boolean(input.selectedText),
       currentPageIncluded: Boolean(currentPage),
       retrievedChunkIds: retrieved.map((source) => source.chunkId).filter(Boolean) as string[],
-      notesIncluded: notes.map((note) => note.id)
+      notesIncluded: notes.map((note) => note.id),
+      pdfContextIncluded: includePdfContext,
+      followUpIncluded: Boolean(input.followUpMessage)
     }
   };
 }
@@ -177,14 +183,11 @@ function dedupeSources(sources: SourceSnippet[]) {
   });
 }
 
-function modeLabel(mode: AnswerMode) {
+function chatModeLabel(mode: ChatMode) {
   return {
-    explain_simple: "Explain simply",
-    explain_depth: "Explain in depth",
-    summarize: "Summarize",
-    define_terms: "Define terms",
-    give_example: "Give example",
-    quiz_me: "Quiz me"
+    no_context_fast: "No PDF context, fast: answer from general knowledge and the user's words only. This is best for quick term explanations.",
+    pdf_fast: "With PDF context, fast: use selected text/current page/retrieved passages, but keep the answer concise.",
+    pdf_thinking: "With PDF context, thinking: reason more carefully, explain the important steps, and use more of the available PDF context when helpful."
   }[mode];
 }
 
