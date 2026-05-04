@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Highlighter, MessageSquareText, Ruler, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, MessageSquareText, Ruler, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
@@ -56,6 +56,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [rulerHeight, setRulerHeight] = useState<ReadingRulerHeight>("medium");
   const [rulerColor, setRulerColor] = useState("#5aa9a3");
   const [rulerTopRatio, setRulerTopRatio] = useState(0.42);
+  const [areaCaptureEnabled, setAreaCaptureEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
@@ -212,7 +213,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   }
 
   function openSelectionMenu(event: React.MouseEvent<HTMLDivElement>, page: number) {
-    if (event.ctrlKey) {
+    if (event.ctrlKey || areaCaptureEnabled) {
       event.preventDefault();
       setContextMenu(null);
       return;
@@ -323,6 +324,13 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         <button className="tool-button" onClick={saveBookmark} title="Bookmark page">
           <BookmarkPlus size={16} />
         </button>
+        <button
+          className={areaCaptureEnabled ? "tool-button active" : "tool-button"}
+          onClick={() => setAreaCaptureEnabled((enabled) => !enabled)}
+          title="Capture PDF area"
+        >
+          <ImagePlus size={16} />
+        </button>
         <button className={rulerEnabled ? "tool-button active" : "tool-button"} onClick={() => setRulerEnabled((enabled) => !enabled)} title="Reading ruler">
           <Ruler size={16} />
         </button>
@@ -389,6 +397,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onSelect={(event) => captureSelection(event, pageNumber)}
               onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
               onScreenshot={onScreenshot}
+              areaCaptureEnabled={areaCaptureEnabled}
+              onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
               loadText={(page) => {
                 if (!pages[page]) {
                   api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
@@ -416,6 +426,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             onPointerCancel={finishRulerDrag}
             title="Drag reading ruler"
           />
+        )}
+        {areaCaptureEnabled && (
+          <div className="capture-hint">
+            <ImagePlus size={15} />
+            <span>Drag on the PDF to capture an area</span>
+            <button onClick={() => setAreaCaptureEnabled(false)} title="Cancel capture">
+              <X size={14} />
+            </button>
+          </div>
         )}
       </div>
       {contextMenu && (
@@ -455,6 +474,8 @@ function ReaderPage({
   onSelect,
   onContextMenu,
   onScreenshot,
+  areaCaptureEnabled,
+  onAreaCaptureComplete,
   loadText
 }: {
   pdf: PDFDocumentProxy | null;
@@ -469,6 +490,8 @@ function ReaderPage({
   onSelect: (event: React.MouseEvent<HTMLDivElement>) => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
   onScreenshot: (attachment: ChatAttachment) => void;
+  areaCaptureEnabled: boolean;
+  onAreaCaptureComplete: () => void;
   loadText: (page: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -562,7 +585,7 @@ function ReaderPage({
   }, [highlights]);
 
   function startAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
-    if (!event.ctrlKey || !canvasRef.current || !surfaceRef.current) return;
+    if ((!event.ctrlKey && !areaCaptureEnabled) || !canvasRef.current || !surfaceRef.current) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = localPoint(event, event.currentTarget);
@@ -586,7 +609,10 @@ function ReaderPage({
     setCaptureRect(null);
     if (rect.width < 8 || rect.height < 8 || !canvasRef.current) return;
     const attachment = captureCanvasRegion(canvasRef.current, rect, pageNumber);
-    if (attachment) onScreenshot(attachment);
+    if (attachment) {
+      onScreenshot(attachment);
+      onAreaCaptureComplete();
+    }
   }
 
   function cancelAreaCapture() {
@@ -605,6 +631,7 @@ function ReaderPage({
         onPointerCancel={cancelAreaCapture}
         onMouseUp={onSelect}
         onContextMenu={onContextMenu}
+        data-capture-mode={areaCaptureEnabled ? "true" : undefined}
       >
         {shouldRender ? (
           <>
