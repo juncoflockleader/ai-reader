@@ -1,5 +1,5 @@
 import { BookMarked, ChevronDown, CornerDownRight, Save, Send, Sparkles, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice, type ProviderId } from "../../api";
 
 type Props = {
@@ -46,6 +46,7 @@ export default function AssistantPanel({
   const [savedNoteKeys, setSavedNoteKeys] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const chatThreadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api<AppSettings>("/api/settings")
@@ -90,6 +91,14 @@ export default function AssistantPanel({
       cancelled = true;
     };
   }, [book.id]);
+
+  useEffect(() => {
+    const thread = chatThreadRef.current;
+    if (!thread) return;
+    requestAnimationFrame(() => {
+      thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
+    });
+  }, [messages, historyMessages, busy]);
 
   async function ask() {
     if ((!question.trim() && attachments.length === 0) || busy) return;
@@ -224,7 +233,7 @@ export default function AssistantPanel({
         ))}
       </div>
 
-      <div className="chat-thread">
+      <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
           <>
             {historyMessages.map((message, index) => (
