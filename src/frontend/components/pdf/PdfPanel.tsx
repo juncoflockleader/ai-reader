@@ -62,6 +62,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const programmaticScrollUntil = useRef(0);
   const selectionCache = useRef<{ page: number; text: string } | null>(null);
   const rulerDrag = useRef<{ offsetY: number; pointerId: number } | null>(null);
+  const scrollUpdateFrame = useRef(0);
+  const scrollDrivenPageChange = useRef(false);
   const [rulerBounds, setRulerBounds] = useState({ left: 12, width: 0 });
 
   useEffect(() => {
@@ -91,6 +93,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
 
   useEffect(() => {
     if (!currentPage) return;
+    if (scrollDrivenPageChange.current) {
+      scrollDrivenPageChange.current = false;
+      return;
+    }
     const pageElement = scrollRef.current?.querySelector<HTMLElement>(`[data-page="${currentPage}"]`);
     if (!pageElement) return;
     programmaticScrollUntil.current = Date.now() + 700;
@@ -150,6 +156,28 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       window.removeEventListener("resize", updateBounds);
     };
   }, [currentPage, rulerEnabled, zoom, visiblePages.length]);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const updatePageFromScroll = () => {
+      cancelAnimationFrame(scrollUpdateFrame.current);
+      scrollUpdateFrame.current = requestAnimationFrame(() => {
+        if (Date.now() < programmaticScrollUntil.current) return;
+        const nextPage = pageClosestToViewportAnchor(scroller);
+        if (nextPage && nextPage !== currentPage) {
+          scrollDrivenPageChange.current = true;
+          onPageChange(nextPage);
+        }
+      });
+    };
+    scroller.addEventListener("scroll", updatePageFromScroll, { passive: true });
+    updatePageFromScroll();
+    return () => {
+      cancelAnimationFrame(scrollUpdateFrame.current);
+      scroller.removeEventListener("scroll", updatePageFromScroll);
+    };
+  }, [currentPage, onPageChange, visiblePages.length, zoom]);
 
   async function saveHighlight() {
     await saveHighlightForSelection(selectedText, currentPage);
@@ -261,7 +289,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   }
 
   function setVisiblePage(page: number) {
-    if (Date.now() < programmaticScrollUntil.current) return;
+    if (Date.now() < programmaticScrollUntil.current || page === currentPage) return;
+    scrollDrivenPageChange.current = true;
     onPageChange(page);
   }
 
@@ -724,6 +753,26 @@ function bestSelectionText(primary: string, fallback: string) {
 
 function isAiNote(highlight: Highlight) {
   return highlight.anchor?.type === "ai_note" || (highlight.color === "blue" && highlight.selected_text.startsWith("AI note on page "));
+}
+
+function pageClosestToViewportAnchor(scroller: HTMLDivElement) {
+  const scrollerBounds = scroller.getBoundingClientRect();
+  const anchorY = scrollerBounds.top + scrollerBounds.height * 0.38;
+  const pageElements = Array.from(scroller.querySelectorAll<HTMLElement>("[data-page]"));
+  let closestPage = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  for (const element of pageElements) {
+    const bounds = element.getBoundingClientRect();
+    const intersectsViewport = bounds.bottom >= scrollerBounds.top && bounds.top <= scrollerBounds.bottom;
+    if (!intersectsViewport) continue;
+    const clampedAnchor = clamp(anchorY, bounds.top, bounds.bottom);
+    const distance = Math.abs(clampedAnchor - anchorY);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestPage = Number(element.dataset.page);
+    }
+  }
+  return Number.isFinite(closestPage) ? closestPage : 0;
 }
 
 function localPoint(event: React.PointerEvent<HTMLDivElement>, element: HTMLDivElement) {

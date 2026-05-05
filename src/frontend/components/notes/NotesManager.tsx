@@ -1,6 +1,7 @@
 import { BookMarked, Pencil, Save, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, type Book, type Highlight } from "../../api";
+import MarkdownText from "../common/MarkdownText";
 
 export default function NotesManager({
   book,
@@ -117,11 +118,17 @@ export default function NotesManager({
                   </button>
                 </div>
               </div>
+              {notePrompt(highlight) && (
+                <div className="note-prompt">
+                  <div className="note-label">Prompt</div>
+                  <MarkdownText text={notePrompt(highlight)} />
+                </div>
+              )}
               <div className="note-source">{highlight.selected_text}</div>
               {editingId === highlight.id ? (
                 <textarea value={draftNote} onChange={(event) => setDraftNote(event.target.value)} />
               ) : (
-                <p>{highlight.note}</p>
+                <MarkdownText text={highlight.note ?? ""} />
               )}
             </article>
           ))}
@@ -129,4 +136,8 @@ export default function NotesManager({
       </section>
     </div>
   );
+}
+
+function notePrompt(highlight: Highlight) {
+  return typeof highlight.anchor?.prompt === "string" ? highlight.anchor.prompt : "";
 }
