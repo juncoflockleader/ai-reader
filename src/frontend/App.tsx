@@ -7,6 +7,18 @@ import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
 import NotesManager from "./components/notes/NotesManager";
 
+
+const ASSISTANT_MIN_WIDTH_PX = 360;
+const SPLITTER_WIDTH_PX = 8;
+
+function clampLeftPanePercent(percent: number, workspaceWidth: number) {
+  if (!Number.isFinite(percent)) return 72;
+  const maxByWidth = workspaceWidth > 0
+    ? ((workspaceWidth - ASSISTANT_MIN_WIDTH_PX - SPLITTER_WIDTH_PX) / workspaceWidth) * 100
+    : 80;
+  const safeMax = Math.max(45, Math.min(80, maxByWidth));
+  return Math.min(safeMax, Math.max(45, percent));
+}
 export default function App() {
   const [books, setBooks] = useState<Book[]>([]);
   const [activeBook, setActiveBook] = useState<Book | null>(null);
@@ -28,8 +40,8 @@ export default function App() {
   const [error, setError] = useState("");
 
   const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(() => {
-    const saved = Number(localStorage.getItem("studyreader:ui:leftPaneWidthPercent") ?? "75");
-    return Number.isFinite(saved) ? Math.min(85, Math.max(55, saved)) : 75;
+    const saved = Number(localStorage.getItem("studyreader:ui:leftPaneWidthPercent") ?? "72");
+    return Number.isFinite(saved) ? saved : 72;
   });
   const [assistantDrawerOpen, setAssistantDrawerOpen] = useState(false);
   const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < 1080);
@@ -100,7 +112,7 @@ export default function App() {
       if (!draggingSplitter.current || !workspaceRef.current) return;
       const bounds = workspaceRef.current.getBoundingClientRect();
       const nextPercent = ((event.clientX - bounds.left) / bounds.width) * 100;
-      setLeftPaneWidthPercent(Math.min(85, Math.max(55, nextPercent)));
+      setLeftPaneWidthPercent(clampLeftPanePercent(nextPercent, bounds.width));
     };
     const stopDrag = () => {
       draggingSplitter.current = false;
@@ -115,7 +127,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("studyreader:ui:leftPaneWidthPercent", String(leftPaneWidthPercent));
+    const width = workspaceRef.current?.getBoundingClientRect().width ?? window.innerWidth;
+    const clamped = clampLeftPanePercent(leftPaneWidthPercent, width);
+    if (clamped !== leftPaneWidthPercent) {
+      setLeftPaneWidthPercent(clamped);
+      return;
+    }
+    localStorage.setItem("studyreader:ui:leftPaneWidthPercent", String(clamped));
   }, [leftPaneWidthPercent]);
 
   function updateCurrentPage(page: number) {
