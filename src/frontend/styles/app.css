@@ -540,6 +540,10 @@ button:disabled {
   gap: 6px;
   z-index: 30;
 }
+.bookmark-hover-card[data-placement="bottom"] {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
 .bookmark-hover-header {
   display: flex;
   align-items: center;

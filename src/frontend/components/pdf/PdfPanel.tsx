@@ -75,8 +75,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [commandQuery, setCommandQuery] = useState("");
   const [showStructureNavigator, setShowStructureNavigator] = useState(false);
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null);
+  const [hoveredBookmarkCardPlacement, setHoveredBookmarkCardPlacement] = useState<"top" | "bottom">("top");
   const [bookmarkPreviewImages, setBookmarkPreviewImages] = useState<Record<string, string>>({});
   const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const bookmarkHoverCardRef = useRef<HTMLDivElement | null>(null);
   const readingProgressDrag = useRef<{ pointerId: number } | null>(null);
   const bookmarkHoverTimeout = useRef<number | null>(null);
 
@@ -100,6 +102,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     clearBookmarkHoverTimeout();
     setHoveredBookmarkId(bookmarkId);
   };
+
+  useEffect(() => {
+    if (!hoveredBookmarkId) return;
+    const button = bookmarkButtonRefs.current[hoveredBookmarkId];
+    const card = bookmarkHoverCardRef.current;
+    if (!button || !card) return;
+    const buttonRect = button.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const preferredTop = buttonRect.top - cardRect.height - 10;
+    setHoveredBookmarkCardPlacement(preferredTop < 8 ? "bottom" : "top");
+  }, [hoveredBookmarkId]);
 
   const ensureBookmarkPreviewImage = async (bookmarkId: string, pageNumber: number) => {
     if (bookmarkPreviewImages[bookmarkId] || !pdf) return;
@@ -620,6 +633,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               {hoveredBookmarkId === bookmark.id && (
                 <div
                   className="bookmark-hover-card"
+                  data-placement={hoveredBookmarkCardPlacement}
+                  ref={bookmarkHoverCardRef}
                   onMouseEnter={() => openBookmarkHoverCard(bookmark.id)}
                   onMouseLeave={() => scheduleBookmarkHoverClose(bookmark.id)}
                 >
