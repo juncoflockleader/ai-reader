@@ -884,6 +884,17 @@ button:disabled {
   border-radius: 999px;
 }
 
+.source-anchors-collapsed {
+  margin-top: 4px;
+}
+
+.source-anchors-collapsed summary {
+  cursor: pointer;
+  width: fit-content;
+  color: #49675a;
+  font-weight: 600;
+}
+
 .context-drawer {
   flex: 0 0 auto;
   margin: 0 12px 10px;
