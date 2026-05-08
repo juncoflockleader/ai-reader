@@ -530,7 +530,7 @@ button:disabled {
   left: 50%;
   bottom: calc(100% + 10px);
   transform: translateX(-50%);
-  min-width: 210px;
+  width: min(240px, 58vw);
   padding: 8px;
   border-radius: 8px;
   border: 1px solid #cbd6d7;
@@ -540,22 +540,45 @@ button:disabled {
   gap: 6px;
   z-index: 30;
 }
+.bookmark-hover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bookmark-page-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #334e57;
+}
 .bookmark-delete {
-  justify-self: start;
-  padding: 3px 8px;
+  width: 22px;
+  height: 22px;
   border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #ffe6df;
   color: #8b2d17;
 }
 .bookmark-mini-preview {
   font-size: 11px;
   line-height: 1.35;
-  max-height: 48px;
+  max-height: 132px;
   overflow: hidden;
   color: #526469;
   background: #f3f6f6;
   border-radius: 6px;
   padding: 6px;
+}
+.bookmark-mini-preview img {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+  border-radius: 4px;
+  border: 1px solid #d5dddd;
 }
 
 .pdf-panel.focus-mode .bookmark-strip,
