@@ -108,7 +108,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     const pageElement = scrollRef.current?.querySelector<HTMLElement>(`[data-page="${currentPage}"]`);
     if (!pageElement) return;
     programmaticScrollUntil.current = Date.now() + 700;
-    pageElement.scrollIntoView({ block: "start" });
+    pageElement.scrollIntoView({ block: "start", inline: "nearest" });
   }, [book.id, currentPage]);
 
   useEffect(() => {

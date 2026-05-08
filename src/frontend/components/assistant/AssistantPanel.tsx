@@ -16,10 +16,10 @@ type Props = {
   onClearAttachments: () => void;
 };
 
-const chatModes = [
-  ["no_context_fast", "No context"],
-  ["pdf_fast", "PDF fast"],
-  ["pdf_thinking", "PDF thinking"]
+const responseStyles = [
+  ["pdf_fast", "Fast"],
+  ["pdf_thinking", "Thinking"],
+  ["no_context_fast", "Pro"]
 ] as const;
 
 export default function AssistantPanel({
@@ -258,20 +258,27 @@ export default function AssistantPanel({
         </div>
       </div>
 
-      <div className="mode-row compact">
-        {chatModes.map(([value, label]) => (
-          <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)}>
-            {label}
-          </button>
-        ))}
-      </div>
-      <div className="context-chip-row">
-        <span>Context:</span>
-        {(["selection", "page", "document"] as const).map((scope) => (
-          <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)}>
-            {scope === "selection" ? "Selection" : scope === "page" ? "Page" : "Whole document"}
-          </button>
-        ))}
+      <div className="assistant-controls">
+        <div className="control-group">
+          <span>Context</span>
+          <div className="compact-chip-row">
+            {(["selection", "page", "document"] as const).map((scope) => (
+              <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)}>
+                {scope === "selection" ? "Selection" : scope === "page" ? "Page" : "Document"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="control-group">
+          <span>Response style</span>
+          <div className="compact-chip-row">
+            {responseStyles.map(([value, label]) => (
+              <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="prompt-bank">
