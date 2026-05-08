@@ -1,5 +1,5 @@
 import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Keyboard, Ruler, Search, Settings2, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -76,6 +76,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showStructureNavigator, setShowStructureNavigator] = useState(false);
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null);
   const [hoveredBookmarkCardPlacement, setHoveredBookmarkCardPlacement] = useState<"top" | "bottom">("top");
+  const [bookmarkHoverCardReady, setBookmarkHoverCardReady] = useState(false);
+  const [bookmarkHoverCardOffset, setBookmarkHoverCardOffset] = useState(0);
   const [bookmarkPreviewImages, setBookmarkPreviewImages] = useState<Record<string, string>>({});
   const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const bookmarkHoverCardRef = useRef<HTMLDivElement | null>(null);
@@ -95,37 +97,54 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     clearBookmarkHoverTimeout();
     bookmarkHoverTimeout.current = window.setTimeout(() => {
       setHoveredBookmarkId((current) => (current === bookmarkId ? null : current));
+      setBookmarkHoverCardReady(false);
+      setBookmarkHoverCardOffset(0);
     }, 220);
   };
 
   const openBookmarkHoverCard = (bookmarkId: string) => {
     clearBookmarkHoverTimeout();
+    if (hoveredBookmarkId !== bookmarkId) {
+      setBookmarkHoverCardReady(false);
+      setBookmarkHoverCardOffset(0);
+    }
     setHoveredBookmarkId(bookmarkId);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!hoveredBookmarkId) return;
     const button = bookmarkButtonRefs.current[hoveredBookmarkId];
     const card = bookmarkHoverCardRef.current;
     if (!button || !card) return;
     const buttonRect = button.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();
-    const preferredTop = buttonRect.top - cardRect.height - 10;
-    setHoveredBookmarkCardPlacement(preferredTop < 8 ? "bottom" : "top");
-  }, [hoveredBookmarkId]);
+    const viewportPadding = 10;
+    const cardGap = 10;
+    const topFits = buttonRect.top - cardRect.height - cardGap >= viewportPadding;
+    const bottomFits = buttonRect.bottom + cardRect.height + cardGap <= window.innerHeight - viewportPadding;
+    let horizontalOffset = 0;
+    if (cardRect.left < viewportPadding) {
+      horizontalOffset = viewportPadding - cardRect.left;
+    } else if (cardRect.right > window.innerWidth - viewportPadding) {
+      horizontalOffset = window.innerWidth - viewportPadding - cardRect.right;
+    }
+    setHoveredBookmarkCardPlacement(topFits || !bottomFits ? "top" : "bottom");
+    setBookmarkHoverCardOffset(horizontalOffset);
+    setBookmarkHoverCardReady(true);
+  }, [hoveredBookmarkId, bookmarkPreviewImages]);
 
   const ensureBookmarkPreviewImage = async (bookmarkId: string, pageNumber: number) => {
     if (bookmarkPreviewImages[bookmarkId] || !pdf) return;
     try {
       const page = await pdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 0.18 });
+      const viewport = page.getViewport({ scale: 0.34 });
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
       if (!context) return;
       canvas.width = Math.max(1, Math.floor(viewport.width));
       canvas.height = Math.max(1, Math.floor(viewport.height));
       await page.render({ canvasContext: context, viewport }).promise;
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.42);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
       setBookmarkPreviewImages((current) => (current[bookmarkId] ? current : { ...current, [bookmarkId]: dataUrl }));
     } catch (error) {
       console.error("Failed to render bookmark preview", error);
@@ -565,7 +584,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         aria-label="Reading progress"
         onPointerDown={(event) => {
           if (event.button !== 0) return;
-          if ((event.target as HTMLElement).closest(".progress-bookmark")) return;
+          if ((event.target as HTMLElement).closest(".progress-bookmark-wrap")) return;
           readingProgressDrag.current = { pointerId: event.pointerId };
           event.currentTarget.setPointerCapture(event.pointerId);
           seekFromProgressPointer(event.clientX, event.currentTarget);
@@ -586,60 +605,67 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         }}
       >
         <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
-        <span>{currentPage}/{book.page_count || 1}</span>
+        <span className="reading-progress-page-count">{currentPage}/{book.page_count || 1}</span>
         {!focusModeEnabled && bookmarks.map((bookmark) => {
           const left = ((bookmark.page_number - 1) / Math.max((book.page_count || 1) - 1, 1)) * 100;
           const pageSnippet = pages[bookmark.page_number]?.clean_text.split(/\s+/).slice(0, 18).join(" ") ?? "Page preview is loading...";
           const previewImage = bookmarkPreviewImages[bookmark.id];
           return (
-            <button
+            <div
               key={`progress-bookmark-${bookmark.id}`}
-              className={bookmark.page_number === currentPage ? "progress-bookmark active" : "progress-bookmark"}
+              className={bookmark.page_number === currentPage ? "progress-bookmark-wrap active" : "progress-bookmark-wrap"}
               style={{ left: `${left}%` }}
-              onClick={() => changePage(bookmark.page_number)}
               onPointerDown={(event) => event.stopPropagation()}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                setContextMenu({
-                  type: "bookmark",
-                  x: Math.min(event.clientX, window.innerWidth - 220),
-                  y: Math.min(event.clientY, window.innerHeight - 80),
-                  bookmarkId: bookmark.id
-                });
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-                event.preventDefault();
-                const sorted = [...bookmarks].sort((a, b) => a.page_number - b.page_number);
-                const currentIndex = sorted.findIndex((item) => item.id === bookmark.id);
-                if (currentIndex < 0) return;
-                const offset = event.key === "ArrowRight" ? 1 : -1;
-                const next = sorted[currentIndex + offset];
-                if (!next) return;
-                changePage(next.page_number);
-                bookmarkButtonRefs.current[next.id]?.focus();
-              }}
-              ref={(element) => {
-                bookmarkButtonRefs.current[bookmark.id] = element;
-              }}
               onMouseEnter={() => {
                 openBookmarkHoverCard(bookmark.id);
                 void ensureBookmarkPreviewImage(bookmark.id, bookmark.page_number);
               }}
               onMouseLeave={() => scheduleBookmarkHoverClose(bookmark.id)}
-              title={`Bookmark · page ${bookmark.page_number}`}
             >
-              <Bookmark size={10} />
+              <button
+                className="progress-bookmark"
+                onClick={() => changePage(bookmark.page_number)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setContextMenu({
+                    type: "bookmark",
+                    x: Math.min(event.clientX, window.innerWidth - 220),
+                    y: Math.min(event.clientY, window.innerHeight - 80),
+                    bookmarkId: bookmark.id
+                  });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+                  event.preventDefault();
+                  const sorted = [...bookmarks].sort((a, b) => a.page_number - b.page_number);
+                  const currentIndex = sorted.findIndex((item) => item.id === bookmark.id);
+                  if (currentIndex < 0) return;
+                  const offset = event.key === "ArrowRight" ? 1 : -1;
+                  const next = sorted[currentIndex + offset];
+                  if (!next) return;
+                  changePage(next.page_number);
+                  bookmarkButtonRefs.current[next.id]?.focus();
+                }}
+                ref={(element) => {
+                  bookmarkButtonRefs.current[bookmark.id] = element;
+                }}
+                title={`Bookmark · page ${bookmark.page_number}`}
+              >
+                <Bookmark size={10} />
+              </button>
               {hoveredBookmarkId === bookmark.id && (
                 <div
                   className="bookmark-hover-card"
                   data-placement={hoveredBookmarkCardPlacement}
+                  data-ready={bookmarkHoverCardReady ? "true" : "false"}
+                  style={{ "--bookmark-card-offset": `${bookmarkHoverCardOffset}px` } as React.CSSProperties}
                   ref={bookmarkHoverCardRef}
                   onMouseEnter={() => openBookmarkHoverCard(bookmark.id)}
                   onMouseLeave={() => scheduleBookmarkHoverClose(bookmark.id)}
+                  onPointerDown={(event) => event.stopPropagation()}
                 >
                   <div className="bookmark-hover-header">
-                    <span className="bookmark-page-meta"><Bookmark size={12} /> Page {bookmark.page_number}</span>
+                    <span className="bookmark-page-meta"><Bookmark size={11} /> Page {bookmark.page_number}</span>
                     <button
                       className="bookmark-delete"
                       onClick={(event) => {
@@ -648,15 +674,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
                       }}
                       aria-label={`Delete bookmark on page ${bookmark.page_number}`}
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                   <div className="bookmark-mini-preview">
-                    {previewImage ? <img src={previewImage} alt={`Low resolution preview for page ${bookmark.page_number}`} /> : pageSnippet}
+                    {previewImage ? <img src={previewImage} alt={`Preview for page ${bookmark.page_number}`} /> : <span className="bookmark-preview-text">{pageSnippet}</span>}
                   </div>
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
