@@ -602,18 +602,16 @@ button:disabled {
   display: flex;
   flex-wrap: nowrap;
   gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 
 .context-chip {
-  min-height: 34px;
-  min-width: 72px;
-  padding: 4px 8px;
+  min-height: 40px;
+  min-width: 84px;
+  padding: 6px 10px;
   border-radius: 10px;
   background: #e8eeeb;
   color: #47585b;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -626,13 +624,13 @@ button:disabled {
 }
 
 .mode {
-  min-height: 34px;
-  min-width: 72px;
-  padding: 4px 8px;
+  min-height: 40px;
+  min-width: 84px;
+  padding: 6px 10px;
   border-radius: 10px;
   background: #e8eeeb;
   color: #47585b;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
