@@ -1,4 +1,4 @@
-import { ChevronDown, CornerDownRight, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, CornerDownRight, RefreshCw, Send, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice, type ProviderId } from "../../api";
 import MarkdownText from "../common/MarkdownText";
@@ -37,6 +37,7 @@ export default function AssistantPanel({
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [chatMode, setChatMode] = useState<ChatMode>("pdf_fast");
+  const [contextScope, setContextScope] = useState<"selection" | "page" | "document">("page");
   const [provider, setProvider] = useState<ProviderId>("openai");
   const [model, setModel] = useState("gpt-4.1-mini");
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -124,6 +125,7 @@ export default function AssistantPanel({
           question: userText,
           current_page: currentPage,
           selected_text: selectedText,
+          context_scope: contextScope,
           attachments: outgoingAttachments.map((attachment) => ({
             type: attachment.type,
             dataUrl: attachment.dataUrl,
@@ -232,6 +234,14 @@ export default function AssistantPanel({
           </button>
         ))}
       </div>
+      <div className="context-chip-row">
+        <span>Context:</span>
+        {(["selection", "page", "document"] as const).map((scope) => (
+          <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)}>
+            {scope === "selection" ? "Selection" : scope === "page" ? "Page" : "Whole document"}
+          </button>
+        ))}
+      </div>
 
       <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
@@ -245,6 +255,7 @@ export default function AssistantPanel({
                 onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
                 onSaveNote={() => saveAnswer(message.content, `history-${index}`, promptForAssistantMessage(historyMessages, index))}
                 onNavigate={onNavigate}
+                onScopeChange={setContextScope}
               />
             ))}
             <div className="history-divider">Loaded history above is preserved for reference and will not be considered unless you choose Follow up.</div>
@@ -265,6 +276,7 @@ export default function AssistantPanel({
             onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
             onSaveNote={() => saveAnswer(message.content, `current-${index}`, promptForAssistantMessage(messages, index))}
             onNavigate={onNavigate}
+            onScopeChange={setContextScope}
           />
         ))}
         {busy && <div className="message assistant"><div className="message-body">{thinkingLabel(chatMode)}</div></div>}
@@ -280,6 +292,13 @@ export default function AssistantPanel({
       )}
 
       {error && <div className="inline-error">{error}</div>}
+      <div className="follow-up-suggestions">
+        {quickSuggestions({ selectedText, currentPage, hasAssistantMessage: messages.some((message) => message.role === "assistant") }).map((suggestion) => (
+          <button key={suggestion} onClick={() => setQuestion(suggestion)}>
+            {suggestion}
+          </button>
+        ))}
+      </div>
 
       <div className="chat-input">
         {followUpMessage && (
@@ -348,7 +367,8 @@ function ChatMessageView({
   saved,
   onFollowUp,
   onSaveNote,
-  onNavigate
+  onNavigate,
+  onScopeChange
 }: {
   message: ChatMessage;
   actionKey: string;
@@ -356,6 +376,7 @@ function ChatMessageView({
   onFollowUp: () => void;
   onSaveNote: () => void;
   onNavigate: (page: number) => void;
+  onScopeChange: (scope: "selection" | "page" | "document") => void;
 }) {
   return (
     <div className={`message ${message.role}`}>
@@ -394,9 +415,26 @@ function ChatMessageView({
                     <span>p. {citation.page}</span>
                   </button>
                 ))}
+                <button onClick={() => onScopeChange("selection")} title="Regenerate with narrower context">
+                  <RefreshCw size={14} />
+                  <span>Narrower</span>
+                </button>
+                <button onClick={() => onScopeChange("document")} title="Regenerate with broader context">
+                  <RefreshCw size={14} />
+                  <span>Broader</span>
+                </button>
               </>
             );
           })()}
+        </div>
+      )}
+      {message.role === "assistant" && message.citations && message.citations.length > 0 && (
+        <div className="source-anchors">
+          {message.citations.map((citation, citationIndex) => (
+            <a key={`${actionKey}-anchor-${citationIndex}`} href={`#pdf-page-${citation.page}`} onClick={() => onNavigate(citation.page)}>
+              [p.{citation.page}{citation.chunk_id ? ` · ${citation.chunk_id}` : ""}]
+            </a>
+          ))}
         </div>
       )}
     </div>
@@ -412,4 +450,20 @@ function promptForAssistantMessage(messages: ChatMessage[], assistantIndex: numb
     if (messages[index]?.role === "user") return messages[index].content;
   }
   return "";
+}
+
+function quickSuggestions(input: { selectedText: string; currentPage: number; hasAssistantMessage: boolean }) {
+  const suggestions = input.selectedText.trim()
+    ? [
+        "Summarize this selection in 3 bullets.",
+        "Explain this selection like I'm new to the topic.",
+        "What assumptions does this selection make?"
+      ]
+    : [
+        `Summarize page ${input.currentPage}.`,
+        "List the key terms I should remember.",
+        "Create 3 quiz questions from this page."
+      ];
+  if (input.hasAssistantMessage) suggestions.unshift("Can you verify the previous answer with citations?");
+  return suggestions.slice(0, 4);
 }
