@@ -1384,3 +1384,23 @@ button:disabled {
     transform: translateX(0);
   }
 }
+
+.doc-structure-nav {
+  position: absolute;
+  right: 20px;
+  top: 64px;
+  width: 320px;
+  max-height: 52vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #ccd7db;
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 12;
+}
+.doc-structure-nav button { display:block; width:100%; text-align:left; margin:4px 0; padding:6px 8px; background:#eef3f5; border-radius:6px; }
+.command-palette input { width: 100%; margin-bottom: 6px; padding: 7px 8px; border: 1px solid #c7d1d6; border-radius: 6px; }
+.prompt-bank { border-bottom: 1px solid #d3dbdf; padding: 8px 12px; display: grid; gap: 8px; }
+.prompt-chip-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.prompt-chip { padding:4px 8px; border-radius:999px; background:#eef3f6; color:#30424c; font-size:12px; }
+.secondary { margin-top: 6px; padding: 6px 8px; border-radius: 6px; background:#dbe7ee; }
