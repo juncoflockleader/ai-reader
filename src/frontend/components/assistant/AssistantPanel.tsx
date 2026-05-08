@@ -285,29 +285,6 @@ export default function AssistantPanel({
         </div>
       </div>
 
-      <div className="assistant-controls">
-        <div className="control-group">
-          <span>Context</span>
-          <div className="compact-chip-row">
-            {contextScopes.map(([scope, short, label]) => (
-              <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)} title={label}>
-                {short}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="control-group">
-          <span>Response style</span>
-          <div className="compact-chip-row">
-            {responseStyles.map(([value, short, label]) => (
-              <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)} title={label}>
-                {short}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
           <>
@@ -359,15 +336,37 @@ export default function AssistantPanel({
       )}
 
       {error && <div className="inline-error">{error}</div>}
-      <div className="follow-up-suggestions">
-        {quickSuggestions({ selectedText, currentPage, hasAssistantMessage: messages.some((message) => message.role === "assistant") }).map((suggestion) => (
-          <button key={suggestion} onClick={() => setQuestion(suggestion)}>
-            {suggestion}
-          </button>
-        ))}
-      </div>
 
       <div className="chat-input">
+        <div className="composer-options">
+          <div className="composer-option-group" aria-label="Context">
+            <span>Context</span>
+            <div className="compact-chip-row">
+              {contextScopes.map(([scope, short, label]) => (
+                <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)} title={label}>
+                  {short}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="composer-option-group" aria-label="Response style">
+            <span>Response</span>
+            <div className="compact-chip-row">
+              {responseStyles.map(([value, short, label]) => (
+                <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)} title={label}>
+                  {short}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="follow-up-suggestions">
+          {quickSuggestions({ selectedText, currentPage, hasAssistantMessage: messages.some((message) => message.role === "assistant") }).map((suggestion) => (
+            <button key={suggestion} onClick={() => setQuestion(suggestion)}>
+              {suggestion}
+            </button>
+          ))}
+        </div>
         {followUpMessage && (
           <div className="follow-up-chip">
             <CornerDownRight size={14} />

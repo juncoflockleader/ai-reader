@@ -70,7 +70,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [rulerBounds, setRulerBounds] = useState({ left: 12, width: 0 });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [focusModeEnabled, setFocusModeEnabled] = useState(false);
   const [typographyPreset, setTypographyPreset] = useState<ReaderTypographyPreset>("comfortable");
   const [commandQuery, setCommandQuery] = useState("");
   const [showStructureNavigator, setShowStructureNavigator] = useState(false);
@@ -289,7 +288,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         if (action.id === "highlightSelection") void saveHighlightForSelection(selectedText, currentPage);
         if (action.id === "summarizeSelection") draftExplanation(selectedText, currentPage);
       }})),
-      { id: "toggleFocus", label: "Toggle focus mode", shortcut: "F", run: () => setFocusModeEnabled((v) => !v) },
       { id: "toggleStructure", label: "Toggle document structure", shortcut: "", run: () => setShowStructureNavigator((v) => !v) }
     ];
     const q = commandQuery.trim().toLowerCase();
@@ -318,6 +316,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         setCommandPaletteOpen(false);
         setSettingsOpen(false);
       }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (commandPaletteOpen) return;
       if (key === "a" && selectedText.trim()) {
         event.preventDefault();
@@ -334,10 +333,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       if (key === "n" && selectedText.trim()) {
         event.preventDefault();
         void saveHighlightForSelection(selectedText, currentPage);
-      }
-      if (key === "f") {
-        event.preventDefault();
-        setFocusModeEnabled((current) => !current);
       }
     };
     window.addEventListener("keydown", onKeydown);
@@ -509,7 +504,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const pageHighlights = displayHighlights.filter((highlight) => highlight.color !== "bookmark" && highlight.anchor?.type !== "bookmark");
 
   return (
-    <section className={focusModeEnabled ? "pdf-panel focus-mode" : "pdf-panel"}>
+    <section className="pdf-panel">
       <div className="panel-toolbar">
         <div className="page-stepper">
           <button onClick={() => changePage(currentPage - 1)}>Prev</button>
@@ -520,10 +515,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <span>/ {book.page_count || "..."}</span>
           <button onClick={() => changePage(currentPage + 1)}>Next</button>
         </div>
-        {!focusModeEnabled && <label className="search-box">
+        <label className="search-box">
           <Search size={16} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search loaded text" />
-        </label>}
+        </label>
         {(() => {
           const action = getAction("highlightSelection");
           const Icon = action.icon;
@@ -606,7 +601,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       >
         <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
         <span className="reading-progress-page-count">{currentPage}/{book.page_count || 1}</span>
-        {!focusModeEnabled && bookmarks.map((bookmark) => {
+        {bookmarks.map((bookmark) => {
           const left = ((bookmark.page_number - 1) / Math.max((book.page_count || 1) - 1, 1)) * 100;
           const pageSnippet = pages[bookmark.page_number]?.clean_text.split(/\s+/).slice(0, 18).join(" ") ?? "Page preview is loading...";
           const previewImage = bookmarkPreviewImages[bookmark.id];
@@ -706,10 +701,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               </button>
             ))}
           </div>
-          <label className="toggle-row">
-            <input type="checkbox" checked={focusModeEnabled} onChange={(event) => setFocusModeEnabled(event.target.checked)} />
-            <span>Focus mode (hide non-critical controls)</span>
-          </label>
         </div>
       )}
 
@@ -807,7 +798,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           )}
         </div>
       )}
-      {showStructureNavigator && !focusModeEnabled && (
+      {showStructureNavigator && (
         <div className="doc-structure-nav">
           <h4>Document structure</h4>
           {bookmarks.map((bookmark) => <button key={bookmark.id} onClick={() => changePage(bookmark.page_number)}>Bookmark · p.{bookmark.page_number}</button>)}
