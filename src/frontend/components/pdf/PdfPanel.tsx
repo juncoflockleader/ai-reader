@@ -76,6 +76,16 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showStructureNavigator, setShowStructureNavigator] = useState(false);
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null);
   const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const readingProgressDrag = useRef<{ pointerId: number } | null>(null);
+
+  const seekFromProgressPointer = (clientX: number, element: HTMLElement) => {
+    const bounds = element.getBoundingClientRect();
+    if (bounds.width <= 0) return;
+    const ratio = clamp((clientX - bounds.left) / bounds.width, 0, 1);
+    const totalPages = Math.max(book.page_count || 1, 1);
+    const target = Math.min(totalPages, Math.max(1, Math.round(ratio * (totalPages - 1)) + 1));
+    if (target !== currentPage) changePage(target);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -497,7 +507,31 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <Keyboard size={16} />
         </button>
       </div>
-      <div className="reading-progress" aria-label="Reading progress">
+      <div
+        className="reading-progress"
+        aria-label="Reading progress"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          if ((event.target as HTMLElement).closest(".progress-bookmark")) return;
+          readingProgressDrag.current = { pointerId: event.pointerId };
+          event.currentTarget.setPointerCapture(event.pointerId);
+          seekFromProgressPointer(event.clientX, event.currentTarget);
+        }}
+        onPointerMove={(event) => {
+          if (!readingProgressDrag.current || readingProgressDrag.current.pointerId !== event.pointerId) return;
+          seekFromProgressPointer(event.clientX, event.currentTarget);
+        }}
+        onPointerUp={(event) => {
+          if (!readingProgressDrag.current || readingProgressDrag.current.pointerId !== event.pointerId) return;
+          readingProgressDrag.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={(event) => {
+          if (!readingProgressDrag.current || readingProgressDrag.current.pointerId !== event.pointerId) return;
+          readingProgressDrag.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+      >
         <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
         <span>{currentPage}/{book.page_count || 1}</span>
         {!focusModeEnabled && bookmarks.map((bookmark) => {
@@ -509,6 +543,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               className={bookmark.page_number === currentPage ? "progress-bookmark active" : "progress-bookmark"}
               style={{ left: `${left}%` }}
               onClick={() => changePage(bookmark.page_number)}
+              onPointerDown={(event) => event.stopPropagation()}
               onContextMenu={(event) => {
                 event.preventDefault();
                 setContextMenu({
