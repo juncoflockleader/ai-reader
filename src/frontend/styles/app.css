@@ -592,6 +592,27 @@ button:disabled {
   justify-content: end;
 }
 
+.context-chip-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 12px 10px;
+  color: #5a6a6f;
+  font-size: 13px;
+}
+
+.context-chip {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e8eeeb;
+  color: #47585b;
+}
+
+.context-chip.active {
+  background: #2d675b;
+  color: #fff;
+}
+
 .mode {
   min-width: 0;
   padding: 8px 4px;
@@ -783,6 +804,23 @@ button:disabled {
   color: #2e5940;
 }
 
+.source-anchors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.source-anchors a {
+  font-size: 12px;
+  color: #2e5940;
+  text-decoration: none;
+  background: #eef5ef;
+  border: 1px solid #d4e3d6;
+  padding: 4px 7px;
+  border-radius: 999px;
+}
+
 .context-drawer {
   flex: 0 0 auto;
   margin: 0 12px 10px;
@@ -816,6 +854,21 @@ button:disabled {
   padding: 12px;
   border-top: 1px solid #d7dedc;
   background: #fdfefd;
+}
+
+.follow-up-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 12px 10px;
+}
+
+.follow-up-suggestions button {
+  background: #edf3f1;
+  color: #365249;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .follow-up-chip {

@@ -769,7 +769,7 @@ function ReaderPage({
   }
 
   return (
-    <article ref={pageRef} data-page={pageNumber} className={active ? "reader-page active" : "reader-page"}>
+    <article id={`pdf-page-${pageNumber}`} ref={pageRef} data-page={pageNumber} className={active ? "reader-page active" : "reader-page"}>
       <div
         className={shouldRender ? "pdf-page-surface" : "pdf-page-surface placeholder"}
         ref={surfaceRef}
