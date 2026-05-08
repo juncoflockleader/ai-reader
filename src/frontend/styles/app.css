@@ -525,6 +525,7 @@ button:disabled {
 
 .assistant-panel {
   background: #f8faf8;
+  overflow: hidden;
 }
 
 .assistant-header {
@@ -604,20 +605,18 @@ button:disabled {
   gap: 6px;
 }
 
-.context-chip-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 0 12px 10px;
-  color: #5a6a6f;
-  font-size: 13px;
-}
-
 .context-chip {
+  min-height: 40px;
+  min-width: 84px;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 10px;
   background: #e8eeeb;
   color: #47585b;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .context-chip.active {
@@ -626,12 +625,17 @@ button:disabled {
 }
 
 .mode {
-  min-width: 0;
+  min-height: 40px;
+  min-width: 84px;
   padding: 6px 10px;
-  border-radius: 7px;
+  border-radius: 10px;
   background: #e8eeeb;
   color: #47585b;
   font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mode.active {
