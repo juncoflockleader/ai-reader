@@ -1,9 +1,10 @@
-import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, MessageSquareText, Ruler, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Ruler, Search, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api, type Book, type ChatAttachment, type Highlight } from "../../api";
+import { getAction } from "../../actions/registry";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
@@ -347,9 +348,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <Search size={16} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search loaded text" />
         </label>
-        <button className="tool-button" onClick={saveHighlight} disabled={!selectedText.trim()} title="Save highlight">
-          <Highlighter size={16} />
-        </button>
+        {(() => {
+          const action = getAction("highlightSelection");
+          const Icon = action.icon;
+          return (
+            <button className="tool-button" onClick={saveHighlight} disabled={!selectedText.trim()} title={action.label}>
+              <Icon size={16} />
+            </button>
+          );
+        })()}
         <button className="tool-button" onClick={saveBookmark} title="Bookmark page">
           <BookmarkPlus size={16} />
         </button>
@@ -470,24 +477,43 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         <div className="selection-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
           {contextMenu.type === "selection" ? (
             <>
-              <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)}>
-                <MessageSquareText size={15} />
-                <span>Explain in chat</span>
-              </button>
-              <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)}>
-                <Highlighter size={15} />
-                <span>Highlight</span>
-              </button>
+              {(() => {
+                const summarizeAction = getAction("summarizeSelection");
+                const highlightAction = getAction("highlightSelection");
+                const SummarizeIcon = summarizeAction.icon;
+                const HighlightIcon = highlightAction.icon;
+                return (
+                  <>
+                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title={summarizeAction.shortcut ? `${summarizeAction.label} (${summarizeAction.shortcut})` : summarizeAction.label}>
+                      <SummarizeIcon size={15} />
+                      <span>{summarizeAction.label}</span>
+                    </button>
+                    <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)} title={highlightAction.shortcut ? `${highlightAction.label} (${highlightAction.shortcut})` : highlightAction.label}>
+                      <HighlightIcon size={15} />
+                      <span>{highlightAction.label}</span>
+                    </button>
+                  </>
+                );
+              })()}
             </>
           ) : (
-            <button className="danger-menu-item" onClick={() => void deleteHighlights(contextMenu.highlightIds)}>
-              <Trash2 size={15} />
-              <span>Remove highlights</span>
-            </button>
+            <SelectionRemoveHighlightsButton onRemove={() => void deleteHighlights(contextMenu.highlightIds)} />
           )}
         </div>
       )}
     </section>
+  );
+}
+
+
+function SelectionRemoveHighlightsButton({ onRemove }: { onRemove: () => void }) {
+  const action = getAction("removeHighlights");
+  const Icon = action.icon;
+  return (
+    <button className="danger-menu-item" onClick={onRemove}>
+      <Icon size={15} />
+      <span>{action.label}</span>
+    </button>
   );
 }
 

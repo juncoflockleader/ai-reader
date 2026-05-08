@@ -1,7 +1,8 @@
-import { BookMarked, ChevronDown, CornerDownRight, Save, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, CornerDownRight, Send, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice, type ProviderId } from "../../api";
 import MarkdownText from "../common/MarkdownText";
+import { getAction } from "../../actions/registry";
 
 type Props = {
   book: Book;
@@ -370,20 +371,32 @@ function ChatMessageView({
       </div>
       {message.role === "assistant" && (
         <div className="citation-list">
-          <button onClick={onFollowUp}>
-            <CornerDownRight size={14} />
-            <span>Follow up</span>
-          </button>
-          <button onClick={onSaveNote} disabled={saved} title={saved ? "Note saved" : "Save answer as note"}>
-            <Save size={14} />
-            <span>{saved ? "Saved" : "Save note"}</span>
-          </button>
-          {message.citations?.map((citation, citationIndex) => (
-            <button key={`${actionKey}-citation-${citationIndex}`} onClick={() => onNavigate(citation.page)}>
-              <BookMarked size={14} />
-              <span>p. {citation.page}</span>
-            </button>
-          ))}
+          {(() => {
+            const followUpAction = getAction("followUpAssistantMessage");
+            const saveAction = getAction("saveAssistantMessageNote");
+            const citationAction = getAction("jumpToCitationPage");
+            const FollowUpIcon = followUpAction.icon;
+            const SaveIcon = saveAction.icon;
+            const CitationIcon = citationAction.icon;
+            return (
+              <>
+                <button onClick={onFollowUp} title={followUpAction.shortcut ? `${followUpAction.label} (${followUpAction.shortcut})` : followUpAction.label}>
+                  <FollowUpIcon size={14} />
+                  <span>{followUpAction.label}</span>
+                </button>
+                <button onClick={onSaveNote} disabled={saved} title={saved ? "Note saved" : saveAction.label}>
+                  <SaveIcon size={14} />
+                  <span>{saved ? "Saved" : saveAction.label}</span>
+                </button>
+                {message.citations?.map((citation, citationIndex) => (
+                  <button key={`${actionKey}-citation-${citationIndex}`} onClick={() => onNavigate(citation.page)} title={citationAction.label}>
+                    <CitationIcon size={14} />
+                    <span>p. {citation.page}</span>
+                  </button>
+                ))}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
