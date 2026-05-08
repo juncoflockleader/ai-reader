@@ -455,10 +455,11 @@ function ChatMessageView({
   onScopeChange: (scope: "selection" | "page" | "document") => void;
   onRegenerate: (prompt: string, scope: "selection" | "page" | "document") => Promise<void>;
 }) {
+  const cleanedContent = sanitizeAssistantContent(message.content);
   return (
     <div className={`message ${message.role}`}>
       <div className="message-body">
-        <MarkdownText text={message.content} />
+        <MarkdownText text={cleanedContent} />
         {message.attachments && message.attachments.length > 0 && (
           <div className="message-attachments">
             {message.attachments.map((attachment) => (
@@ -516,16 +517,31 @@ function ChatMessageView({
         </div>
       )}
       {message.role === "assistant" && message.citations && message.citations.length > 0 && (
-        <div className="source-anchors">
-          {message.citations.map((citation, citationIndex) => (
-            <a key={`${actionKey}-anchor-${citationIndex}`} href={`#pdf-page-${citation.page}`} onClick={() => onNavigate(citation.page)}>
-              [p.{citation.page}{citation.chunk_id ? ` · ${citation.chunk_id}` : ""}]
-            </a>
-          ))}
-        </div>
+        <details className="source-anchors-collapsed">
+          <summary>...</summary>
+          <div className="source-anchors">
+            {message.citations.map((citation, citationIndex) => (
+              <a key={`${actionKey}-anchor-${citationIndex}`} href={`#pdf-page-${citation.page}`} onClick={() => onNavigate(citation.page)}>
+                [p.{citation.page}{citation.chunk_id ? ` · ${citation.chunk_id}` : ""}]
+              </a>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );
+}
+
+function sanitizeAssistantContent(content: string) {
+  return content
+    .split("\n")
+    .filter((line) => {
+      const compact = line.replace(/\s+/g, "").toLowerCase();
+      if (!compact) return true;
+      return !["answercontext:", "selectionpagewholedocument", "answercontext:selectionpagewholedocument"].includes(compact);
+    })
+    .join("\n")
+    .trim();
 }
 
 function truncateForUi(text: string, max: number) {
