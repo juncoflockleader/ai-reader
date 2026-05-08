@@ -101,10 +101,12 @@ export default function AssistantPanel({
     });
   }, [messages, historyMessages, busy]);
 
-  async function ask() {
-    if ((!question.trim() && attachments.length === 0) || busy) return;
+  async function ask(input?: { text?: string; scope?: "selection" | "page" | "document" }) {
+    const requestedText = input?.text ?? question;
+    const requestedScope = input?.scope ?? contextScope;
+    if ((!requestedText.trim() && attachments.length === 0) || busy) return;
     const outgoingAttachments = attachments;
-    const userText = question.trim() || attachmentOnlyQuestion(outgoingAttachments, currentPage);
+    const userText = requestedText.trim() || attachmentOnlyQuestion(outgoingAttachments, currentPage);
     setQuestion("");
     onClearAttachments();
     setFollowUpMessage(null);
@@ -125,7 +127,7 @@ export default function AssistantPanel({
           question: userText,
           current_page: currentPage,
           selected_text: selectedText,
-          context_scope: contextScope,
+          context_scope: requestedScope,
           attachments: outgoingAttachments.map((attachment) => ({
             type: attachment.type,
             dataUrl: attachment.dataUrl,
@@ -169,6 +171,12 @@ export default function AssistantPanel({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save note.");
     }
+  }
+
+  async function regenerateWithScope(prompt: string, scope: "selection" | "page" | "document") {
+    if (!prompt.trim() || busy) return;
+    setContextScope(scope);
+    await ask({ text: prompt, scope });
   }
 
   async function clearChatHistory() {
@@ -251,11 +259,14 @@ export default function AssistantPanel({
                 key={`history-${index}`}
                 message={message}
                 actionKey={`history-${index}`}
+                regeneratePrompt={promptForAssistantMessage(historyMessages, index)}
                 saved={savedNoteKeys.has(`history-${index}`)}
                 onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
                 onSaveNote={() => saveAnswer(message.content, `history-${index}`, promptForAssistantMessage(historyMessages, index))}
                 onNavigate={onNavigate}
+                contextScope={contextScope}
                 onScopeChange={setContextScope}
+                onRegenerate={regenerateWithScope}
               />
             ))}
             <div className="history-divider">Loaded history above is preserved for reference and will not be considered unless you choose Follow up.</div>
@@ -272,11 +283,14 @@ export default function AssistantPanel({
             key={`current-${index}`}
             message={message}
             actionKey={`current-${index}`}
+            regeneratePrompt={promptForAssistantMessage(messages, index)}
             saved={savedNoteKeys.has(`current-${index}`)}
             onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
             onSaveNote={() => saveAnswer(message.content, `current-${index}`, promptForAssistantMessage(messages, index))}
             onNavigate={onNavigate}
+            contextScope={contextScope}
             onScopeChange={setContextScope}
+            onRegenerate={regenerateWithScope}
           />
         ))}
         {busy && <div className="message assistant"><div className="message-body">{thinkingLabel(chatMode)}</div></div>}
@@ -334,7 +348,7 @@ export default function AssistantPanel({
             }
           }}
         />
-        <button className="send-button" onClick={ask} disabled={busy || (!question.trim() && attachments.length === 0)} title="Send">
+        <button className="send-button" onClick={() => void ask()} disabled={busy || (!question.trim() && attachments.length === 0)} title="Send">
           <Send size={18} />
         </button>
       </div>
@@ -364,19 +378,25 @@ function attachmentOnlyQuestion(attachments: ChatAttachment[], currentPage: numb
 function ChatMessageView({
   message,
   actionKey,
+  regeneratePrompt,
   saved,
   onFollowUp,
   onSaveNote,
   onNavigate,
-  onScopeChange
+  contextScope,
+  onScopeChange,
+  onRegenerate
 }: {
   message: ChatMessage;
   actionKey: string;
+  regeneratePrompt: string;
   saved: boolean;
   onFollowUp: () => void;
   onSaveNote: () => void;
   onNavigate: (page: number) => void;
+  contextScope: "selection" | "page" | "document";
   onScopeChange: (scope: "selection" | "page" | "document") => void;
+  onRegenerate: (prompt: string, scope: "selection" | "page" | "document") => Promise<void>;
 }) {
   return (
     <div className={`message ${message.role}`}>
@@ -390,6 +410,16 @@ function ChatMessageView({
           </div>
         )}
       </div>
+      {message.role === "assistant" && (
+        <div className="context-chip-row">
+          <span>Answer context:</span>
+          {(["selection", "page", "document"] as const).map((scope) => (
+            <button key={`${actionKey}-${scope}`} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => onScopeChange(scope)}>
+              {scope === "selection" ? "Selection" : scope === "page" ? "Page" : "Whole document"}
+            </button>
+          ))}
+        </div>
+      )}
       {message.role === "assistant" && (
         <div className="citation-list">
           {(() => {
@@ -415,11 +445,11 @@ function ChatMessageView({
                     <span>p. {citation.page}</span>
                   </button>
                 ))}
-                <button onClick={() => onScopeChange("selection")} title="Regenerate with narrower context">
+                <button onClick={() => void onRegenerate(regeneratePrompt, "selection")} title="Regenerate with narrower context">
                   <RefreshCw size={14} />
                   <span>Narrower</span>
                 </button>
-                <button onClick={() => onScopeChange("document")} title="Regenerate with broader context">
+                <button onClick={() => void onRegenerate(regeneratePrompt, "document")} title="Regenerate with broader context">
                   <RefreshCw size={14} />
                   <span>Broader</span>
                 </button>
