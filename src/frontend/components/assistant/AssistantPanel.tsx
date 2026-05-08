@@ -17,9 +17,15 @@ type Props = {
 };
 
 const responseStyles = [
-  ["pdf_fast", "Fast"],
-  ["pdf_thinking", "Thinking"],
-  ["no_context_fast", "Pro"]
+  ["pdf_fast", "F", "Fast"],
+  ["pdf_thinking", "T", "Thinking"],
+  ["no_context_fast", "P", "Pro"]
+] as const;
+
+const contextScopes = [
+  ["selection", "S", "Selection"],
+  ["page", "P", "Page"],
+  ["document", "D", "Document"]
 ] as const;
 
 export default function AssistantPanel({
@@ -253,9 +259,9 @@ export default function AssistantPanel({
         <div className="control-group">
           <span>Context</span>
           <div className="compact-chip-row">
-            {(["selection", "page", "document"] as const).map((scope) => (
-              <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)}>
-                {scope === "selection" ? "Selection" : scope === "page" ? "Page" : "Document"}
+            {contextScopes.map(([scope, short, label]) => (
+              <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)} title={label}>
+                {short}
               </button>
             ))}
           </div>
@@ -263,9 +269,9 @@ export default function AssistantPanel({
         <div className="control-group">
           <span>Response style</span>
           <div className="compact-chip-row">
-            {responseStyles.map(([value, label]) => (
-              <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)}>
-                {label}
+            {responseStyles.map(([value, short, label]) => (
+              <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)} title={label}>
+                {short}
               </button>
             ))}
           </div>

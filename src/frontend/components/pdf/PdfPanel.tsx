@@ -73,6 +73,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [typographyPreset, setTypographyPreset] = useState<ReaderTypographyPreset>("comfortable");
   const [commandQuery, setCommandQuery] = useState("");
   const [showStructureNavigator, setShowStructureNavigator] = useState(false);
+  const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -496,6 +497,39 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       <div className="reading-progress" aria-label="Reading progress">
         <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
         <span>{currentPage}/{book.page_count || 1}</span>
+        {!focusModeEnabled && bookmarks.map((bookmark) => {
+          const left = ((bookmark.page_number - 1) / Math.max((book.page_count || 1) - 1, 1)) * 100;
+          const pageSnippet = pages[bookmark.page_number]?.clean_text.split(/\s+/).slice(0, 18).join(" ") ?? "Page preview is loading...";
+          return (
+            <button
+              key={`progress-bookmark-${bookmark.id}`}
+              className={bookmark.page_number === currentPage ? "progress-bookmark active" : "progress-bookmark"}
+              style={{ left: `${left}%` }}
+              onClick={() => changePage(bookmark.page_number)}
+              onMouseEnter={() => setHoveredBookmarkId(bookmark.id)}
+              onMouseLeave={() => setHoveredBookmarkId((current) => (current === bookmark.id ? null : current))}
+              title={`Bookmark · page ${bookmark.page_number}`}
+            >
+              <Bookmark size={10} />
+              {hoveredBookmarkId === bookmark.id && (
+                <div className="bookmark-hover-card">
+                  <strong>Bookmark</strong>
+                  <span>Page {bookmark.page_number}</span>
+                  <button
+                    className="bookmark-delete"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void deleteBookmark(bookmark.id);
+                    }}
+                  >
+                    Delete bookmark
+                  </button>
+                  <div className="bookmark-mini-preview">{pageSnippet}</div>
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
       {settingsOpen && (
         <div className="reader-settings-popover">
@@ -512,24 +546,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <input type="checkbox" checked={focusModeEnabled} onChange={(event) => setFocusModeEnabled(event.target.checked)} />
             <span>Focus mode (hide non-critical controls)</span>
           </label>
-        </div>
-      )}
-
-      {!focusModeEnabled && bookmarks.length > 0 && (
-        <div className="bookmark-strip">
-          {bookmarks.map((bookmark) => (
-            <button key={bookmark.id} className={bookmark.page_number === currentPage ? "bookmark-pill active" : "bookmark-pill"} onClick={() => changePage(bookmark.page_number)}>
-              <Bookmark size={13} />
-              <span>p. {bookmark.page_number}</span>
-              <X
-                size={13}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void deleteBookmark(bookmark.id);
-                }}
-              />
-            </button>
-          ))}
         </div>
       )}
 

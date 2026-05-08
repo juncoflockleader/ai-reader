@@ -509,6 +509,53 @@ button:disabled {
 }
 .reading-progress-bar { height: 100%; background: linear-gradient(90deg, #4d8fa3, #5aa9a3); }
 .reading-progress span { position: absolute; right: 10px; top: 1px; font-size: 12px; color: #27414b; }
+.progress-bookmark {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff8d8;
+  border: 1px solid #c3a95e;
+  color: #7d6430;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.progress-bookmark.active { background: #f0d37a; }
+.bookmark-hover-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  min-width: 210px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd6d7;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(24, 32, 37, 0.16);
+  display: grid;
+  gap: 6px;
+  z-index: 8;
+}
+.bookmark-delete {
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #ffe6df;
+  color: #8b2d17;
+}
+.bookmark-mini-preview {
+  font-size: 11px;
+  line-height: 1.35;
+  max-height: 48px;
+  overflow: hidden;
+  color: #526469;
+  background: #f3f6f6;
+  border-radius: 6px;
+  padding: 6px;
+}
 
 .pdf-panel.focus-mode .bookmark-strip,
 .pdf-panel.focus-mode .search-box,
@@ -605,10 +652,10 @@ button:disabled {
 }
 
 .context-chip {
-  min-height: 40px;
-  min-width: 84px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
   background: #e8eeeb;
   color: #47585b;
   font-size: 13px;
@@ -624,10 +671,10 @@ button:disabled {
 }
 
 .mode {
-  min-height: 40px;
-  min-width: 84px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
   background: #e8eeeb;
   color: #47585b;
   font-size: 13px;
@@ -645,7 +692,8 @@ button:disabled {
 .chat-thread {
   min-height: 0;
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
 }
 
