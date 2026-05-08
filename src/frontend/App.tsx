@@ -1,5 +1,5 @@
-import { BookOpen, Library, Settings, StickyNote, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BookOpen, Library, PanelRightOpen, Settings, StickyNote, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
 import AssistantPanel from "./components/assistant/AssistantPanel";
@@ -26,6 +26,12 @@ export default function App() {
   const [assistantResetVersion, setAssistantResetVersion] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+
+  const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(75);
+  const [assistantDrawerOpen, setAssistantDrawerOpen] = useState(false);
+  const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < 1080);
+  const workspaceRef = useRef<HTMLElement | null>(null);
+  const draggingSplitter = useRef(false);
 
   useEffect(() => {
     refreshBooks();
@@ -74,6 +80,36 @@ export default function App() {
       setUploading(false);
     }
   }
+
+
+  useEffect(() => {
+    const onResize = () => {
+      const compact = window.innerWidth < 1080;
+      setIsCompactLayout(compact);
+      if (!compact) setAssistantDrawerOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      if (!draggingSplitter.current || !workspaceRef.current) return;
+      const bounds = workspaceRef.current.getBoundingClientRect();
+      const nextPercent = ((event.clientX - bounds.left) / bounds.width) * 100;
+      setLeftPaneWidthPercent(Math.min(85, Math.max(55, nextPercent)));
+    };
+    const stopDrag = () => {
+      draggingSplitter.current = false;
+      document.body.classList.remove("split-resizing");
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopDrag);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", stopDrag);
+    };
+  }, []);
 
   function updateCurrentPage(page: number) {
     setCurrentPage(page);
@@ -133,7 +169,11 @@ export default function App() {
       {error && <div className="error-banner">{error}</div>}
 
       {activeBook ? (
-        <main className="workspace">
+        <main
+          className={isCompactLayout ? "workspace compact" : "workspace"}
+          style={!isCompactLayout ? ({ ["--left-pane-width" as string]: `${leftPaneWidthPercent}%` } as CSSProperties) : undefined}
+          ref={workspaceRef}
+        >
           <PdfPanel
             key={`pdf-${activeBook.id}-${pdfDataVersion}`}
             book={activeBook}
@@ -150,8 +190,21 @@ export default function App() {
               });
             }}
           />
-          <AssistantPanel
-            key={`assistant-${activeBook.id}-${assistantResetVersion}`}
+          {!isCompactLayout && (
+            <div
+              className="pane-splitter"
+              onPointerDown={() => {
+                draggingSplitter.current = true;
+                document.body.classList.add("split-resizing");
+              }}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize panels"
+            />
+          )}
+          <aside className={isCompactLayout ? `assistant-drawer ${assistantDrawerOpen ? "open" : ""}` : "assistant-host"}>
+            <AssistantPanel
+              key={`assistant-${activeBook.id}-${assistantResetVersion}`}
             book={activeBook}
             currentPage={currentPage}
             selectedText={selectedText}
@@ -164,6 +217,18 @@ export default function App() {
             }
             onClearAttachments={() => setPendingAttachments([])}
           />
+          </aside>
+          {isCompactLayout && !assistantDrawerOpen && (
+            <button className="assistant-drawer-toggle" onClick={() => setAssistantDrawerOpen(true)} title="Open assistant">
+              <PanelRightOpen size={18} />
+            </button>
+          )}
+          {isCompactLayout && assistantDrawerOpen && <div className="drawer-backdrop" onClick={() => setAssistantDrawerOpen(false)} />}
+          {isCompactLayout && assistantDrawerOpen && (
+            <button className="assistant-drawer-close" onClick={() => setAssistantDrawerOpen(false)} title="Close assistant">
+              <X size={18} />
+            </button>
+          )}
         </main>
       ) : (
         <main className="empty-state">
