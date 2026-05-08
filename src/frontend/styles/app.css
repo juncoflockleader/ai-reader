@@ -694,7 +694,7 @@ button:disabled {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px;
+  padding: 16px 16px 96px;
 }
 
 .assistant-empty {

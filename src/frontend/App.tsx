@@ -27,7 +27,10 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(75);
+  const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(() => {
+    const saved = Number(localStorage.getItem("studyreader:ui:leftPaneWidthPercent") ?? "75");
+    return Number.isFinite(saved) ? Math.min(85, Math.max(55, saved)) : 75;
+  });
   const [assistantDrawerOpen, setAssistantDrawerOpen] = useState(false);
   const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < 1080);
   const workspaceRef = useRef<HTMLElement | null>(null);
@@ -110,6 +113,10 @@ export default function App() {
       window.removeEventListener("pointerup", stopDrag);
     };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("studyreader:ui:leftPaneWidthPercent", String(leftPaneWidthPercent));
+  }, [leftPaneWidthPercent]);
 
   function updateCurrentPage(page: number) {
     setCurrentPage(page);

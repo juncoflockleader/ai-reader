@@ -39,11 +39,19 @@ export default function AssistantPanel({
   onRemoveAttachment,
   onClearAttachments
 }: Props) {
+  const preferredChatMode = localStorage.getItem("studyreader:assistant:chatMode");
+  const preferredScope = localStorage.getItem("studyreader:assistant:contextScope");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
-  const [chatMode, setChatMode] = useState<ChatMode>("pdf_fast");
-  const [contextScope, setContextScope] = useState<"selection" | "page" | "document">("page");
+  const [chatMode, setChatMode] = useState<ChatMode>(
+    preferredChatMode === "no_context_fast" || preferredChatMode === "pdf_fast" || preferredChatMode === "pdf_thinking"
+      ? preferredChatMode
+      : "pdf_fast"
+  );
+  const [contextScope, setContextScope] = useState<"selection" | "page" | "document">(
+    preferredScope === "selection" || preferredScope === "page" || preferredScope === "document" ? preferredScope : "page"
+  );
   const [provider, setProvider] = useState<ProviderId>("openai");
   const [model, setModel] = useState("gpt-4.1-mini");
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -71,9 +79,31 @@ export default function AssistantPanel({
   useEffect(() => {
     if (!settings) return;
     const choice = modelChoiceForMode(settings, chatMode);
+    const saved = localStorage.getItem(`studyreader:assistant:modelChoice:${chatMode}`);
+    if (saved) {
+      const [savedProvider, ...modelParts] = saved.split(":");
+      const savedModel = modelParts.join(":");
+      if ((savedProvider === "openai" || savedProvider === "anthropic") && savedModel.trim()) {
+        setProvider(savedProvider);
+        setModel(savedModel);
+        return;
+      }
+    }
     setProvider(choice.provider);
     setModel(choice.model);
   }, [settings, chatMode]);
+
+  useEffect(() => {
+    localStorage.setItem("studyreader:assistant:chatMode", chatMode);
+  }, [chatMode]);
+
+  useEffect(() => {
+    localStorage.setItem("studyreader:assistant:contextScope", contextScope);
+  }, [contextScope]);
+
+  useEffect(() => {
+    localStorage.setItem(`studyreader:assistant:modelChoice:${chatMode}`, `${provider}:${model}`);
+  }, [chatMode, provider, model]);
 
   useEffect(() => {
     if (!draftQuestion) return;

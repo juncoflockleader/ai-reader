@@ -30,7 +30,8 @@ type PdfTextLayer = {
 
 type PdfContextMenu =
   | { type: "selection"; x: number; y: number; page: number; text: string }
-  | { type: "highlight"; x: number; y: number; highlightIds: string[] };
+  | { type: "highlight"; x: number; y: number; highlightIds: string[] }
+  | { type: "bookmark"; x: number; y: number; bookmarkId: string };
 
 type ReadingRulerHeight = "small" | "medium" | "large";
 type ReaderTypographyPreset = "compact" | "comfortable" | "focused";
@@ -74,6 +75,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [commandQuery, setCommandQuery] = useState("");
   const [showStructureNavigator, setShowStructureNavigator] = useState(false);
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null);
+  const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -305,6 +307,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   async function deleteBookmark(highlightId: string) {
     await api(`/api/highlights/${highlightId}`, { method: "DELETE" });
     setHighlights((current) => current.filter((highlight) => highlight.id !== highlightId));
+    setContextMenu((current) => (current?.type === "bookmark" && current.bookmarkId === highlightId ? null : current));
   }
 
   async function deleteHighlights(highlightIds: string[]) {
@@ -506,6 +509,30 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               className={bookmark.page_number === currentPage ? "progress-bookmark active" : "progress-bookmark"}
               style={{ left: `${left}%` }}
               onClick={() => changePage(bookmark.page_number)}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setContextMenu({
+                  type: "bookmark",
+                  x: Math.min(event.clientX, window.innerWidth - 220),
+                  y: Math.min(event.clientY, window.innerHeight - 80),
+                  bookmarkId: bookmark.id
+                });
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+                event.preventDefault();
+                const sorted = [...bookmarks].sort((a, b) => a.page_number - b.page_number);
+                const currentIndex = sorted.findIndex((item) => item.id === bookmark.id);
+                if (currentIndex < 0) return;
+                const offset = event.key === "ArrowRight" ? 1 : -1;
+                const next = sorted[currentIndex + offset];
+                if (!next) return;
+                changePage(next.page_number);
+                bookmarkButtonRefs.current[next.id]?.focus();
+              }}
+              ref={(element) => {
+                bookmarkButtonRefs.current[bookmark.id] = element;
+              }}
               onMouseEnter={() => setHoveredBookmarkId(bookmark.id)}
               onMouseLeave={() => setHoveredBookmarkId((current) => (current === bookmark.id ? null : current))}
               title={`Bookmark · page ${bookmark.page_number}`}
@@ -633,7 +660,13 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               })()}
             </>
           ) : (
-            <SelectionRemoveHighlightsButton onRemove={() => void deleteHighlights(contextMenu.highlightIds)} />
+            contextMenu.type === "highlight" ? (
+              <SelectionRemoveHighlightsButton onRemove={() => void deleteHighlights(contextMenu.highlightIds)} />
+            ) : (
+              <button className="danger-menu-item" onClick={() => void deleteBookmark(contextMenu.bookmarkId)}>
+                <span>Delete bookmark</span>
+              </button>
+            )
           )}
         </div>
       )}
