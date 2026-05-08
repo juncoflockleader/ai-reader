@@ -321,8 +321,6 @@ export default function AssistantPanel({
                 onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
                 onSaveNote={() => saveAnswer(message.content, `history-${index}`, promptForAssistantMessage(historyMessages, index))}
                 onNavigate={onNavigate}
-                contextScope={contextScope}
-                onScopeChange={setContextScope}
                 onRegenerate={regenerateWithScope}
               />
             ))}
@@ -345,8 +343,6 @@ export default function AssistantPanel({
             onFollowUp={() => setFollowUpMessage({ role: message.role, content: message.content })}
             onSaveNote={() => saveAnswer(message.content, `current-${index}`, promptForAssistantMessage(messages, index))}
             onNavigate={onNavigate}
-            contextScope={contextScope}
-            onScopeChange={setContextScope}
             onRegenerate={regenerateWithScope}
           />
         ))}
@@ -440,8 +436,6 @@ function ChatMessageView({
   onFollowUp,
   onSaveNote,
   onNavigate,
-  contextScope,
-  onScopeChange,
   onRegenerate
 }: {
   message: ChatMessage;
@@ -451,8 +445,6 @@ function ChatMessageView({
   onFollowUp: () => void;
   onSaveNote: () => void;
   onNavigate: (page: number) => void;
-  contextScope: "selection" | "page" | "document";
-  onScopeChange: (scope: "selection" | "page" | "document") => void;
   onRegenerate: (prompt: string, scope: "selection" | "page" | "document") => Promise<void>;
 }) {
   const cleanedContent = sanitizeAssistantContent(message.content);
@@ -468,16 +460,6 @@ function ChatMessageView({
           </div>
         )}
       </div>
-      {message.role === "assistant" && (
-        <div className="context-chip-row">
-          <span>Answer context:</span>
-          {(["selection", "page", "document"] as const).map((scope) => (
-            <button key={`${actionKey}-${scope}`} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => onScopeChange(scope)}>
-              {scope === "selection" ? "Selection" : scope === "page" ? "Page" : "Whole document"}
-            </button>
-          ))}
-        </div>
-      )}
       {message.role === "assistant" && (
         <div className="citation-list">
           {(() => {
