@@ -499,11 +499,10 @@ button:disabled {
 .toggle-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 
 .reading-progress {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  position: relative;
+  z-index: 1;
   height: 20px;
-  margin: 0 12px;
+  margin: 6px 12px 0;
   border-radius: 999px;
   background: rgba(227, 235, 234, 0.9);
   overflow: hidden;
@@ -584,7 +583,7 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid #d7dedc;
 }
 
@@ -601,7 +600,7 @@ button:disabled {
 
 .compact-chip-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
 }
 
@@ -872,13 +871,15 @@ button:disabled {
   padding: 12px;
   border-top: 1px solid #d7dedc;
   background: #fdfefd;
+  z-index: 2;
 }
 
 .follow-up-suggestions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 7px;
   padding: 0 12px 10px;
+  overflow-x: auto;
 }
 
 .follow-up-suggestions button {
