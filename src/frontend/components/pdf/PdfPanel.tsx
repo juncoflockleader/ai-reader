@@ -621,6 +621,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
                 void ensureBookmarkPreviewImage(bookmark.id, bookmark.page_number);
               }}
               onMouseLeave={() => scheduleBookmarkHoverClose(bookmark.id)}
+              onFocus={() => {
+                openBookmarkHoverCard(bookmark.id);
+                void ensureBookmarkPreviewImage(bookmark.id, bookmark.page_number);
+              }}
+              onBlur={(event) => {
+                const nextFocused = event.relatedTarget as Node | null;
+                if (nextFocused && event.currentTarget.contains(nextFocused)) return;
+                scheduleBookmarkHoverClose(bookmark.id);
+              }}
             >
               <button
                 className="progress-bookmark"
