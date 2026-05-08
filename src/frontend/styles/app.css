@@ -499,11 +499,10 @@ button:disabled {
 .toggle-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 
 .reading-progress {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  position: relative;
+  z-index: 1;
   height: 20px;
-  margin: 0 12px;
+  margin: 6px 12px 0;
   border-radius: 999px;
   background: rgba(227, 235, 234, 0.9);
   overflow: hidden;
@@ -525,6 +524,7 @@ button:disabled {
 
 .assistant-panel {
   background: #f8faf8;
+  overflow: hidden;
 }
 
 .assistant-header {
@@ -583,7 +583,7 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid #d7dedc;
 }
 
@@ -600,24 +600,24 @@ button:disabled {
 
 .compact-chip-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
-}
-
-.context-chip-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 0 12px 10px;
-  color: #5a6a6f;
-  font-size: 13px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .context-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
+  min-height: 34px;
+  min-width: 72px;
+  padding: 4px 8px;
+  border-radius: 10px;
   background: #e8eeeb;
   color: #47585b;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .context-chip.active {
@@ -626,12 +626,17 @@ button:disabled {
 }
 
 .mode {
-  min-width: 0;
-  padding: 6px 10px;
-  border-radius: 7px;
+  min-height: 34px;
+  min-width: 72px;
+  padding: 4px 8px;
+  border-radius: 10px;
   background: #e8eeeb;
   color: #47585b;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mode.active {
@@ -868,13 +873,15 @@ button:disabled {
   padding: 12px;
   border-top: 1px solid #d7dedc;
   background: #fdfefd;
+  z-index: 2;
 }
 
 .follow-up-suggestions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 7px;
   padding: 0 12px 10px;
+  overflow-x: auto;
 }
 
 .follow-up-suggestions button {

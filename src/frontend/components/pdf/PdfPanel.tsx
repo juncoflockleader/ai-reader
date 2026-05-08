@@ -107,8 +107,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     }
     const pageElement = scrollRef.current?.querySelector<HTMLElement>(`[data-page="${currentPage}"]`);
     if (!pageElement) return;
-    programmaticScrollUntil.current = Date.now() + 700;
-    pageElement.scrollIntoView({ block: "start", inline: "nearest" });
+    programmaticScrollUntil.current = Date.now() + 1200;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const top = pageElement.offsetTop - 16;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: "auto" });
   }, [book.id, currentPage]);
 
   useEffect(() => {
@@ -490,6 +493,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <Keyboard size={16} />
         </button>
       </div>
+      <div className="reading-progress" aria-label="Reading progress">
+        <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
+        <span>{currentPage}/{book.page_count || 1}</span>
+      </div>
       {settingsOpen && (
         <div className="reader-settings-popover">
           <h4>Reader settings</h4>
@@ -527,10 +534,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       )}
 
       <div className={`pdf-scroll-frame ${typographyPreset}`} ref={scrollFrameRef}>
-        <div className="reading-progress" aria-label="Reading progress">
-          <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
-          <span>{currentPage}/{book.page_count || 1}</span>
-        </div>
         <div className="pdf-scroll" ref={scrollRef}>
           {visiblePages.map((pageNumber) => (
             <ReaderPage
