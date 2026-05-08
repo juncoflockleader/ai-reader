@@ -483,6 +483,46 @@ button:disabled {
   background: #ffece6;
 }
 
+.reader-settings-popover {
+  margin: 8px 12px 0 auto;
+  width: min(320px, calc(100% - 24px));
+  padding: 10px;
+  border: 1px solid #cbd6d7;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(24, 32, 37, 0.14);
+}
+.reader-settings-popover h4 { margin: 0 0 8px; }
+.preset-row { display: flex; gap: 6px; margin: 6px 0 10px; }
+.preset-row button { padding: 6px 10px; border-radius: 7px; background: #edf4f2; }
+.preset-row button.active { background: #29434d; color: #fff; }
+.toggle-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+
+.reading-progress {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  height: 20px;
+  margin: 0 12px;
+  border-radius: 999px;
+  background: rgba(227, 235, 234, 0.9);
+  overflow: hidden;
+}
+.reading-progress-bar { height: 100%; background: linear-gradient(90deg, #4d8fa3, #5aa9a3); }
+.reading-progress span { position: absolute; right: 10px; top: 1px; font-size: 12px; color: #27414b; }
+
+.pdf-panel.focus-mode .bookmark-strip,
+.pdf-panel.focus-mode .search-box,
+.pdf-panel.focus-mode .capture-hint { display: none; }
+
+.pdf-scroll-frame.compact .textLayer { font-size: 14px; }
+.pdf-scroll-frame.comfortable .textLayer { font-size: 16px; }
+.pdf-scroll-frame.focused .textLayer { font-size: 18px; letter-spacing: 0.01em; }
+
+.command-palette { width: 360px; max-width: calc(100% - 24px); }
+.command-palette button { justify-content: space-between; }
+.command-palette kbd { font-size: 11px; color: #5b6c71; background: #edf4f2; border-radius: 4px; padding: 2px 6px; }
+
 .assistant-panel {
   background: #f8faf8;
 }
