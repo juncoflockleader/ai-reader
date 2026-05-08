@@ -499,17 +499,64 @@ button:disabled {
 .toggle-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 
 .reading-progress {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  position: relative;
+  z-index: 1;
   height: 20px;
-  margin: 0 12px;
+  margin: 6px 12px 0;
   border-radius: 999px;
   background: rgba(227, 235, 234, 0.9);
   overflow: hidden;
 }
 .reading-progress-bar { height: 100%; background: linear-gradient(90deg, #4d8fa3, #5aa9a3); }
 .reading-progress span { position: absolute; right: 10px; top: 1px; font-size: 12px; color: #27414b; }
+.progress-bookmark {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+.progress-bookmark-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid #7a3f00;
+  background: #ffcc70;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+.progress-bookmark-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 240px;
+  display: none;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccd7db;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(20, 30, 36, 0.18);
+}
+.progress-bookmark:hover .progress-bookmark-popover,
+.progress-bookmark:focus-within .progress-bookmark-popover { display: grid; gap: 8px; }
+.bookmark-preview {
+  max-height: 64px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #41545c;
+  border: 1px solid #dde6e9;
+  border-radius: 6px;
+  padding: 6px;
+  background: #f7fafb;
+}
+.progress-bookmark-actions { display: flex; gap: 6px; }
+.progress-bookmark-actions button {
+  flex: 1;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #eaf1f4;
+  color: #28424d;
+}
 
 .pdf-panel.focus-mode .bookmark-strip,
 .pdf-panel.focus-mode .search-box,
@@ -525,6 +572,8 @@ button:disabled {
 
 .assistant-panel {
   background: #f8faf8;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .assistant-header {
@@ -583,7 +632,7 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid #d7dedc;
 }
 
@@ -600,24 +649,30 @@ button:disabled {
 
 .compact-chip-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
-}
-
-.context-chip-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 0 12px 10px;
-  color: #5a6a6f;
-  font-size: 13px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .context-chip {
-  padding: 6px 10px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
   border-radius: 999px;
   background: #e8eeeb;
   color: #47585b;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.context-chip span,
+.mode span {
+  line-height: 1;
 }
 
 .context-chip.active {
@@ -626,12 +681,18 @@ button:disabled {
 }
 
 .mode {
-  min-width: 0;
-  padding: 6px 10px;
-  border-radius: 7px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 999px;
   background: #e8eeeb;
   color: #47585b;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mode.active {
@@ -642,7 +703,8 @@ button:disabled {
 .chat-thread {
   min-height: 0;
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
 }
 
@@ -868,13 +930,15 @@ button:disabled {
   padding: 12px;
   border-top: 1px solid #d7dedc;
   background: #fdfefd;
+  z-index: 2;
 }
 
 .follow-up-suggestions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 7px;
   padding: 0 12px 10px;
+  overflow-x: auto;
 }
 
 .follow-up-suggestions button {
