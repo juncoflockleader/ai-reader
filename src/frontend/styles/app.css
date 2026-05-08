@@ -36,7 +36,7 @@ button:disabled {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .topbar {
@@ -415,7 +415,7 @@ button:disabled {
   position: absolute;
   left: 50%;
   top: 14px;
-  z-index: 8;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -505,12 +505,13 @@ button:disabled {
   margin: 6px 12px 0;
   border-radius: 999px;
   background: rgba(227, 235, 234, 0.9);
-  overflow: hidden;
+  overflow: visible;
 }
 .reading-progress-bar { height: 100%; background: linear-gradient(90deg, #4d8fa3, #5aa9a3); }
 .reading-progress span { position: absolute; right: 10px; top: 1px; font-size: 12px; color: #27414b; }
 .progress-bookmark {
   position: absolute;
+  z-index: 6;
   top: 50%;
   transform: translate(-50%, -50%);
   width: 18px;
@@ -537,7 +538,7 @@ button:disabled {
   box-shadow: 0 10px 24px rgba(24, 32, 37, 0.16);
   display: grid;
   gap: 6px;
-  z-index: 8;
+  z-index: 30;
 }
 .bookmark-delete {
   justify-self: start;
