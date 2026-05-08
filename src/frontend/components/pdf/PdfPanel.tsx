@@ -4,7 +4,7 @@ import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api, type Book, type ChatAttachment, type Highlight } from "../../api";
-import { getAction } from "../../actions/registry";
+import { getAction, listActions } from "../../actions/registry";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
@@ -71,6 +71,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [focusModeEnabled, setFocusModeEnabled] = useState(false);
   const [typographyPreset, setTypographyPreset] = useState<ReaderTypographyPreset>("comfortable");
+  const [commandQuery, setCommandQuery] = useState("");
+  const [showStructureNavigator, setShowStructureNavigator] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,12 +187,43 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     };
   }, [currentPage, onPageChange, visiblePages.length, zoom]);
 
+
+  const inferredHeadings = useMemo(() => {
+    return Object.entries(pages)
+      .map(([page, data]) => ({ page: Number(page), text: data.clean_text.split(/\n+/).map((line) => line.trim()).find((line) => line.length > 24 && line.length < 120) ?? "" }))
+      .filter((entry) => entry.text)
+      .slice(0, 80);
+  }, [pages]);
+
+  const commandEntries = useMemo(() => {
+    const base = [
+      ...listActions().map((action) => ({ id: action.id, label: action.label, shortcut: action.shortcut ?? "", run: () => {
+        if (action.id === "highlightSelection") void saveHighlightForSelection(selectedText, currentPage);
+        if (action.id === "summarizeSelection") draftExplanation(selectedText, currentPage);
+      }})),
+      { id: "toggleFocus", label: "Toggle focus mode", shortcut: "F", run: () => setFocusModeEnabled((v) => !v) },
+      { id: "toggleStructure", label: "Toggle document structure", shortcut: "", run: () => setShowStructureNavigator((v) => !v) }
+    ];
+    const q = commandQuery.trim().toLowerCase();
+    if (!q) return base;
+    const score = (label: string) => {
+      let i = 0;
+      for (const c of label.toLowerCase()) if (c === q[i]) i += 1;
+      return i;
+    };
+    return base
+      .map((entry) => ({ entry, score: score(entry.label + " " + entry.id + " " + entry.shortcut) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.entry);
+  }, [commandQuery, currentPage, selectedText]);
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if ((event.metaKey || event.ctrlKey) && key === "k") {
         event.preventDefault();
         setCommandPaletteOpen((current) => !current);
+        setCommandQuery("");
         return;
       }
       if (key === "escape") {
@@ -585,13 +618,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           )}
         </div>
       )}
+      {showStructureNavigator && !focusModeEnabled && (
+        <div className="doc-structure-nav">
+          <h4>Document structure</h4>
+          {bookmarks.map((bookmark) => <button key={bookmark.id} onClick={() => changePage(bookmark.page_number)}>Bookmark · p.{bookmark.page_number}</button>)}
+          {inferredHeadings.map((heading) => <button key={`${heading.page}-${heading.text}`} onClick={() => changePage(heading.page)}>p.{heading.page} · {heading.text}</button>)}
+        </div>
+      )}
       {commandPaletteOpen && (
         <div className="selection-menu command-palette" style={{ left: "50%", top: "24%", transform: "translateX(-50%)" }}>
-          <button onClick={() => onDraftQuestion(`Answer a question about this selected passage:\n\n${selectedText}`)}><span>Ask selection</span><kbd>A</kbd></button>
-          <button onClick={() => draftExplanation(selectedText || "current page", currentPage)}><span>Explain selection</span><kbd>E</kbd></button>
-          <button onClick={() => draftExplanation(selectedText || "current page", currentPage)}><span>Summarize selection</span><kbd>S</kbd></button>
-          <button onClick={() => void saveHighlightForSelection(selectedText, currentPage)}><span>Save note</span><kbd>N</kbd></button>
-          <button onClick={() => setFocusModeEnabled((current) => !current)}><span>Toggle focus mode</span><kbd>F</kbd></button>
+          <input value={commandQuery} onChange={(e) => setCommandQuery(e.target.value)} placeholder="Type an action or shortcut" autoFocus />
+          {commandEntries.map((entry) => <button key={entry.id} onClick={() => { entry.run(); setCommandPaletteOpen(false); }}><span>{entry.label}</span>{entry.shortcut ? <kbd>{entry.shortcut}</kbd> : null}</button>)}
         </div>
       )}
     </section>

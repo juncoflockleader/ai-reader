@@ -47,6 +47,8 @@ export default function AssistantPanel({
   const [savedNoteKeys, setSavedNoteKeys] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [recentPrompts, setRecentPrompts] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:recentPrompts") ?? "[]"));
+  const [savedTemplates, setSavedTemplates] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:savedPromptTemplates") ?? "[]"));
   const chatThreadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,12 +103,33 @@ export default function AssistantPanel({
     });
   }, [messages, historyMessages, busy]);
 
+
+  function rememberPrompt(prompt: string) {
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+    setRecentPrompts((current) => {
+      const next = [trimmed, ...current.filter((p) => p !== trimmed)].slice(0, 8);
+      localStorage.setItem("studyreader:recentPrompts", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function saveTemplate(prompt: string) {
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+    setSavedTemplates((current) => {
+      const next = [trimmed, ...current.filter((p) => p !== trimmed)].slice(0, 12);
+      localStorage.setItem("studyreader:savedPromptTemplates", JSON.stringify(next));
+      return next;
+    });
+  }
   async function ask(input?: { text?: string; scope?: "selection" | "page" | "document" }) {
     const requestedText = input?.text ?? question;
     const requestedScope = input?.scope ?? contextScope;
     if ((!requestedText.trim() && attachments.length === 0) || busy) return;
     const outgoingAttachments = attachments;
     const userText = requestedText.trim() || attachmentOnlyQuestion(outgoingAttachments, currentPage);
+    rememberPrompt(userText);
     setQuestion("");
     onClearAttachments();
     setFollowUpMessage(null);
@@ -251,6 +274,17 @@ export default function AssistantPanel({
         ))}
       </div>
 
+      <div className="prompt-bank">
+        <div>
+          <strong>Recent prompts</strong>
+          <div className="prompt-chip-row">{recentPrompts.map((prompt) => <button key={prompt} className="prompt-chip" onClick={() => setQuestion(prompt)}>{prompt}</button>)}</div>
+        </div>
+        <div>
+          <strong>Saved templates</strong>
+          <div className="prompt-chip-row">{savedTemplates.map((prompt) => <button key={prompt} className="prompt-chip" onClick={() => setQuestion(prompt)}>{prompt}</button>)}</div>
+          <button className="secondary" onClick={() => saveTemplate(question)} disabled={!question.trim()}>Save current as template</button>
+        </div>
+      </div>
       <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
           <>
