@@ -107,8 +107,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     }
     const pageElement = scrollRef.current?.querySelector<HTMLElement>(`[data-page="${currentPage}"]`);
     if (!pageElement) return;
-    programmaticScrollUntil.current = Date.now() + 700;
-    pageElement.scrollIntoView({ block: "start", inline: "nearest" });
+    programmaticScrollUntil.current = Date.now() + 1200;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const top = pageElement.offsetTop - 16;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: "auto" });
   }, [book.id, currentPage]);
 
   useEffect(() => {

@@ -47,8 +47,8 @@ export default function AssistantPanel({
   const [savedNoteKeys, setSavedNoteKeys] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [recentPrompts, setRecentPrompts] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:recentPrompts") ?? "[]"));
-  const [savedTemplates, setSavedTemplates] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:savedPromptTemplates") ?? "[]"));
+  const [, setRecentPrompts] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:recentPrompts") ?? "[]"));
+  const [, setSavedTemplates] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:savedPromptTemplates") ?? "[]"));
   const chatThreadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,15 +114,6 @@ export default function AssistantPanel({
     });
   }
 
-  function saveTemplate(prompt: string) {
-    const trimmed = prompt.trim();
-    if (!trimmed) return;
-    setSavedTemplates((current) => {
-      const next = [trimmed, ...current.filter((p) => p !== trimmed)].slice(0, 12);
-      localStorage.setItem("studyreader:savedPromptTemplates", JSON.stringify(next));
-      return next;
-    });
-  }
   async function ask(input?: { text?: string; scope?: "selection" | "page" | "document" }) {
     const requestedText = input?.text ?? question;
     const requestedScope = input?.scope ?? contextScope;
@@ -281,17 +272,6 @@ export default function AssistantPanel({
         </div>
       </div>
 
-      <div className="prompt-bank">
-        <div>
-          <strong>Recent prompts</strong>
-          <div className="prompt-chip-row">{recentPrompts.map((prompt) => <button key={prompt} className="prompt-chip" onClick={() => setQuestion(prompt)}>{prompt}</button>)}</div>
-        </div>
-        <div>
-          <strong>Saved templates</strong>
-          <div className="prompt-chip-row">{savedTemplates.map((prompt) => <button key={prompt} className="prompt-chip" onClick={() => setQuestion(prompt)}>{prompt}</button>)}</div>
-          <button className="secondary" onClick={() => saveTemplate(question)} disabled={!question.trim()}>Save current as template</button>
-        </div>
-      </div>
       <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
           <>
