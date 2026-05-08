@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Ruler, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Keyboard, Ruler, Search, Settings2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
@@ -33,6 +33,7 @@ type PdfContextMenu =
   | { type: "highlight"; x: number; y: number; highlightIds: string[] };
 
 type ReadingRulerHeight = "small" | "medium" | "large";
+type ReaderTypographyPreset = "compact" | "comfortable" | "focused";
 
 const rulerHeights: Record<ReadingRulerHeight, number> = {
   small: 36,
@@ -66,6 +67,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const scrollUpdateFrame = useRef(0);
   const scrollDrivenPageChange = useRef(false);
   const [rulerBounds, setRulerBounds] = useState({ left: 12, width: 0 });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [focusModeEnabled, setFocusModeEnabled] = useState(false);
+  const [typographyPreset, setTypographyPreset] = useState<ReaderTypographyPreset>("comfortable");
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +185,44 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     };
   }, [currentPage, onPageChange, visiblePages.length, zoom]);
 
+  useEffect(() => {
+    const onKeydown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if ((event.metaKey || event.ctrlKey) && key === "k") {
+        event.preventDefault();
+        setCommandPaletteOpen((current) => !current);
+        return;
+      }
+      if (key === "escape") {
+        setCommandPaletteOpen(false);
+        setSettingsOpen(false);
+      }
+      if (commandPaletteOpen) return;
+      if (key === "a" && selectedText.trim()) {
+        event.preventDefault();
+        onDraftQuestion(`Answer a question about this selected passage:\n\n${selectedText}`);
+      }
+      if (key === "e" && selectedText.trim()) {
+        event.preventDefault();
+        draftExplanation(selectedText, currentPage);
+      }
+      if (key === "s" && selectedText.trim()) {
+        event.preventDefault();
+        draftExplanation(selectedText, currentPage);
+      }
+      if (key === "n" && selectedText.trim()) {
+        event.preventDefault();
+        void saveHighlightForSelection(selectedText, currentPage);
+      }
+      if (key === "f") {
+        event.preventDefault();
+        setFocusModeEnabled((current) => !current);
+      }
+    };
+    window.addEventListener("keydown", onKeydown);
+    return () => window.removeEventListener("keydown", onKeydown);
+  }, [commandPaletteOpen, currentPage, selectedText]);
+
   async function saveHighlight() {
     await saveHighlightForSelection(selectedText, currentPage);
   }
@@ -238,6 +281,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     if (text) {
       selectionCache.current = { page, text };
       onSelectedText(text);
+      const selection = window.getSelection();
+      const rect = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).getBoundingClientRect() : null;
+      if (rect && rect.width > 0 && rect.height > 0) {
+        setContextMenu({
+          type: "selection",
+          x: Math.min(rect.left + rect.width / 2, window.innerWidth - 220),
+          y: Math.max(18, rect.top - 8),
+          page,
+          text
+        });
+      }
     }
   }
 
@@ -333,7 +387,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const pageHighlights = displayHighlights.filter((highlight) => highlight.color !== "bookmark" && highlight.anchor?.type !== "bookmark");
 
   return (
-    <section className="pdf-panel">
+    <section className={focusModeEnabled ? "pdf-panel focus-mode" : "pdf-panel"}>
       <div className="panel-toolbar">
         <div className="page-stepper">
           <button onClick={() => changePage(currentPage - 1)}>Prev</button>
@@ -344,10 +398,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <span>/ {book.page_count || "..."}</span>
           <button onClick={() => changePage(currentPage + 1)}>Next</button>
         </div>
-        <label className="search-box">
+        {!focusModeEnabled && <label className="search-box">
           <Search size={16} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search loaded text" />
-        </label>
+        </label>}
         {(() => {
           const action = getAction("highlightSelection");
           const Icon = action.icon;
@@ -396,9 +450,32 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <ZoomIn size={16} />
           </button>
         </div>
+        <button className={settingsOpen ? "tool-button active" : "tool-button"} onClick={() => setSettingsOpen((open) => !open)} title="Reader settings">
+          <Settings2 size={16} />
+        </button>
+        <button className={commandPaletteOpen ? "tool-button active" : "tool-button"} onClick={() => setCommandPaletteOpen((open) => !open)} title="Command palette (Ctrl/Cmd+K)">
+          <Keyboard size={16} />
+        </button>
       </div>
+      {settingsOpen && (
+        <div className="reader-settings-popover">
+          <h4>Reader settings</h4>
+          <label>Typography & spacing</label>
+          <div className="preset-row">
+            {(["compact", "comfortable", "focused"] as const).map((preset) => (
+              <button key={preset} className={typographyPreset === preset ? "active" : ""} onClick={() => setTypographyPreset(preset)}>
+                {preset}
+              </button>
+            ))}
+          </div>
+          <label className="toggle-row">
+            <input type="checkbox" checked={focusModeEnabled} onChange={(event) => setFocusModeEnabled(event.target.checked)} />
+            <span>Focus mode (hide non-critical controls)</span>
+          </label>
+        </div>
+      )}
 
-      {bookmarks.length > 0 && (
+      {!focusModeEnabled && bookmarks.length > 0 && (
         <div className="bookmark-strip">
           {bookmarks.map((bookmark) => (
             <button key={bookmark.id} className={bookmark.page_number === currentPage ? "bookmark-pill active" : "bookmark-pill"} onClick={() => changePage(bookmark.page_number)}>
@@ -416,7 +493,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
 
-      <div className="pdf-scroll-frame" ref={scrollFrameRef}>
+      <div className={`pdf-scroll-frame ${typographyPreset}`} ref={scrollFrameRef}>
+        <div className="reading-progress" aria-label="Reading progress">
+          <div className="reading-progress-bar" style={{ width: `${Math.round((currentPage / Math.max(book.page_count || 1, 1)) * 100)}%` }} />
+          <span>{currentPage}/{book.page_count || 1}</span>
+        </div>
         <div className="pdf-scroll" ref={scrollRef}>
           {visiblePages.map((pageNumber) => (
             <ReaderPage
@@ -478,19 +559,22 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           {contextMenu.type === "selection" ? (
             <>
               {(() => {
-                const summarizeAction = getAction("summarizeSelection");
                 const highlightAction = getAction("highlightSelection");
-                const SummarizeIcon = summarizeAction.icon;
                 const HighlightIcon = highlightAction.icon;
                 return (
                   <>
-                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title={summarizeAction.shortcut ? `${summarizeAction.label} (${summarizeAction.shortcut})` : summarizeAction.label}>
-                      <SummarizeIcon size={15} />
-                      <span>{summarizeAction.label}</span>
+                    <button onClick={() => onDraftQuestion(`Answer a question about this selected passage:\n\n${contextMenu.text}`)} title="Ask (A)">
+                      <span>Ask</span>
                     </button>
-                    <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)} title={highlightAction.shortcut ? `${highlightAction.label} (${highlightAction.shortcut})` : highlightAction.label}>
+                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title="Explain (E)">
+                      <span>Explain</span>
+                    </button>
+                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title="Summarize (S)">
+                      <span>Summarize</span>
+                    </button>
+                    <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)} title="Save note (N)">
                       <HighlightIcon size={15} />
-                      <span>{highlightAction.label}</span>
+                      <span>Save note</span>
                     </button>
                   </>
                 );
@@ -499,6 +583,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           ) : (
             <SelectionRemoveHighlightsButton onRemove={() => void deleteHighlights(contextMenu.highlightIds)} />
           )}
+        </div>
+      )}
+      {commandPaletteOpen && (
+        <div className="selection-menu command-palette" style={{ left: "50%", top: "24%", transform: "translateX(-50%)" }}>
+          <button onClick={() => onDraftQuestion(`Answer a question about this selected passage:\n\n${selectedText}`)}><span>Ask selection</span><kbd>A</kbd></button>
+          <button onClick={() => draftExplanation(selectedText || "current page", currentPage)}><span>Explain selection</span><kbd>E</kbd></button>
+          <button onClick={() => draftExplanation(selectedText || "current page", currentPage)}><span>Summarize selection</span><kbd>S</kbd></button>
+          <button onClick={() => void saveHighlightForSelection(selectedText, currentPage)}><span>Save note</span><kbd>N</kbd></button>
+          <button onClick={() => setFocusModeEnabled((current) => !current)}><span>Toggle focus mode</span><kbd>F</kbd></button>
         </div>
       )}
     </section>
