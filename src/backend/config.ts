@@ -2,6 +2,7 @@ export const isProduction = process.env.NODE_ENV === "production";
 
 const configuredHost = process.env.HOST?.trim();
 
+export const isPublicExposure = process.env.STUDYREADER_PUBLIC === "true";
 export const host = configuredHost || "127.0.0.1";
 export const port = parsePort(process.env.PORT, 3127);
 export const uploadMaxMb = parsePositiveNumber(process.env.STUDYREADER_UPLOAD_MAX_MB, 512);
@@ -28,6 +29,10 @@ export function validateDeploymentConfig() {
 
   if (bindsAllInterfaces(host) && !getBasicAuthCredentials()) {
     throw new Error("Refusing to listen on all interfaces without auth. Set STUDYREADER_USER and STUDYREADER_PASSWORD first.");
+  }
+
+  if (isPublicExposure && !getBasicAuthCredentials()) {
+    throw new Error("Refusing public exposure without auth. Set STUDYREADER_USER and STUDYREADER_PASSWORD first.");
   }
 }
 

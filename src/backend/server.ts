@@ -10,7 +10,13 @@ import highlightsRouter from "./routes/highlights";
 import settingsRouter from "./routes/settings";
 import { ensureDataDirs } from "./services/storage/files";
 import { getDb } from "./services/storage/db";
-import { getBasicAuthCredentials, host, isProduction, port, validateDeploymentConfig, type BasicAuthCredentials } from "./config";
+import { getBasicAuthCredentials, host, isProduction, isPublicExposure, port, validateDeploymentConfig, type BasicAuthCredentials } from "./config";
+import {
+  createOriginCheckMiddleware,
+  createRateLimitMiddleware,
+  createSecurityHeadersMiddleware,
+  limitMethods
+} from "./security";
 
 const app = express();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -22,8 +28,17 @@ ensureDataDirs();
 getDb();
 
 const basicAuthCredentials = getBasicAuthCredentials();
+if (isPublicExposure) app.set("trust proxy", "loopback");
+app.use(createSecurityHeadersMiddleware(isPublicExposure));
+app.use(createRateLimitMiddleware(isPublicExposure, { name: "public", windowMs: 15 * 60 * 1000, max: 600 }));
+app.use("/api/chat", createRateLimitMiddleware(isPublicExposure, { name: "chat", windowMs: 15 * 60 * 1000, max: 30 }));
+app.use(
+  "/api/books",
+  limitMethods(["POST"], createRateLimitMiddleware(isPublicExposure, { name: "upload", windowMs: 60 * 60 * 1000, max: 20 }))
+);
 if (basicAuthCredentials) app.use(createBasicAuthMiddleware(basicAuthCredentials));
 if (!isProduction) app.use(cors({ origin: "http://127.0.0.1:5173" }));
+app.use(createOriginCheckMiddleware(isPublicExposure));
 app.use(express.json({ limit: "8mb" }));
 app.use("/api/books", booksRouter);
 app.use("/api", highlightsRouter);
@@ -52,7 +67,8 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 app.listen(port, host, () => {
   const mode = isProduction ? "app" : "API";
   const authStatus = basicAuthCredentials ? "auth enabled" : "auth disabled";
-  console.log(`StudyReader ${mode} running at http://${host}:${port} (${authStatus})`);
+  const publicStatus = isPublicExposure ? ", public exposure hardening enabled" : "";
+  console.log(`StudyReader ${mode} running at http://${host}:${port} (${authStatus}${publicStatus})`);
 });
 
 function createBasicAuthMiddleware(credentials: BasicAuthCredentials): express.RequestHandler {

@@ -44,15 +44,51 @@ http://<mac-mini-ip>:3127
 
 When `HOST=0.0.0.0`, the server refuses to start unless `STUDYREADER_USER` and `STUDYREADER_PASSWORD` are set. This is intentional because the app stores PDFs, reading history, settings, and LLM API keys locally.
 
+## Public Access With Tailscale Funnel
+
+Tailscale Funnel can publish the local Mac mini service to a public HTTPS URL without router port forwarding. Keep StudyReader bound to localhost, let Tailscale own the public tunnel, and keep the StudyReader shared password enabled.
+
+First run the app locally in production mode:
+
+```bash
+npm install
+npm run build
+
+HOST=127.0.0.1 \
+PORT=3127 \
+NODE_ENV=production \
+STUDYREADER_PUBLIC=true \
+STUDYREADER_DATA_DIR=/Users/Shared/StudyReader/data \
+STUDYREADER_USER=family \
+STUDYREADER_PASSWORD='shared-password' \
+npm run serve
+```
+
+Then expose it with Funnel:
+
+```bash
+tailscale funnel --bg --https=443 http://127.0.0.1:3127
+tailscale funnel status
+```
+
+Tailscale Funnel public HTTPS ports are `443`, `8443`, and `10000`. To stop exposing the app:
+
+```bash
+tailscale funnel reset
+```
+
+Keep the StudyReader `launchd` service separate from Tailscale. StudyReader runs the local app process; Tailscale manages the public tunnel. Anyone who reaches the Funnel URL will see the browser's Basic Auth login prompt, so only share the StudyReader password with invited people.
+
 Useful environment variables:
 
-- `HOST`: listen address. Default is `127.0.0.1`; use `0.0.0.0` for LAN access.
+- `HOST`: listen address. Default is `127.0.0.1`; use `0.0.0.0` for LAN access, but keep `127.0.0.1` for Funnel.
 - `PORT`: app port. Default is `3127`.
+- `STUDYREADER_PUBLIC`: set to `true` when exposing through a public tunnel.
 - `STUDYREADER_DATA_DIR`: data directory. Default is project-local `studyreader-data/`.
 - `STUDYREADER_USER` and `STUDYREADER_PASSWORD`: shared Basic Auth credentials.
 - `STUDYREADER_UPLOAD_MAX_MB`: PDF upload limit. Default is `512`.
 
-Do not port-forward this service directly to the public internet. If you need access away from home, use a VPN-style tool such as Tailscale or another private tunnel.
+Do not also port-forward this service through your router. Funnel is the public entry point.
 
 ### launchd Example
 
@@ -80,11 +116,13 @@ Create `/Users/<you>/Library/LaunchAgents/com.studyreader.ai.plist`:
   <key>EnvironmentVariables</key>
   <dict>
     <key>HOST</key>
-    <string>0.0.0.0</string>
+    <string>127.0.0.1</string>
     <key>PORT</key>
     <string>3127</string>
     <key>NODE_ENV</key>
     <string>production</string>
+    <key>STUDYREADER_PUBLIC</key>
+    <string>true</string>
     <key>STUDYREADER_DATA_DIR</key>
     <string>/Users/Shared/StudyReader/data</string>
     <key>STUDYREADER_USER</key>
