@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "concurrently -k \"npm:server\" \"npm:client\"",
-    "client": "vite --host 127.0.0.1",
+    "client": "vite",
     "server": "NODE_OPTIONS=--no-warnings=ExperimentalWarning tsx watch src/backend/server.ts",
+    "serve": "NODE_ENV=production NODE_OPTIONS=--no-warnings=ExperimentalWarning tsx src/backend/server.ts",
     "build": "tsc && vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 
-export const dataDir = path.join(root, "studyreader-data");
+export const dataDir = process.env.STUDYREADER_DATA_DIR
+  ? path.resolve(process.env.STUDYREADER_DATA_DIR)
+  : path.join(root, "studyreader-data");
 export const booksDir = path.join(dataDir, "books");
 export const tmpDir = path.join(dataDir, "tmp");
 

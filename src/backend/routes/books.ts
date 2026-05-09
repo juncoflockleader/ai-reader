@@ -1,24 +1,55 @@
 import fs from "node:fs";
 import multer from "multer";
 import { Router } from "express";
+import { uploadMaxBytes, uploadMaxMb } from "../config";
 import { analyzeStoredBook, ingestPdf } from "../services/ingestion/ingestPdf";
 import { getDb, nowIso, parseJson } from "../services/storage/db";
 import { getBookDir, getBookPdfPath, tmpDir } from "../services/storage/files";
 
 const router = Router();
-const upload = multer({ dest: tmpDir });
-
-router.post("/", upload.single("pdf"), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: "Upload a PDF file." });
+const upload = multer({
+  dest: tmpDir,
+  limits: { fileSize: uploadMaxBytes },
+  fileFilter: (_req, file, cb) => {
+    if (file.originalname.toLowerCase().endsWith(".pdf")) {
+      cb(null, true);
       return;
     }
-    const result = await ingestPdf(req.file.path, req.file.originalname);
-    res.json(result);
-  } catch (error) {
-    next(error);
+    cb(new Error("Only PDF uploads are supported."));
   }
+}).single("pdf");
+
+router.post("/", (req, res, next) => {
+  upload(req, res, async (uploadError) => {
+    if (uploadError) {
+      if (uploadError instanceof multer.MulterError && uploadError.code === "LIMIT_FILE_SIZE") {
+        res.status(413).json({ error: `PDF upload is too large. The current limit is ${uploadMaxMb} MB.` });
+        return;
+      }
+      if (uploadError instanceof multer.MulterError || uploadError instanceof Error) {
+        res.status(400).json({ error: uploadError.message });
+        return;
+      }
+      next(uploadError);
+      return;
+    }
+
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: "Upload a PDF file." });
+        return;
+      }
+      if (!hasPdfHeader(req.file.path)) {
+        fs.rmSync(req.file.path, { force: true });
+        res.status(400).json({ error: "Only PDF uploads are supported." });
+        return;
+      }
+      const result = await ingestPdf(req.file.path, req.file.originalname);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
 });
 
 router.get("/", (_req, res) => {
@@ -144,5 +175,16 @@ router.get("/:bookId/chunks", (req, res) => {
     : getDb().prepare("SELECT * FROM chunks WHERE book_id = ? ORDER BY page_start LIMIT 100").all(req.params.bookId);
   res.json({ chunks });
 });
+
+function hasPdfHeader(filePath: string) {
+  const fd = fs.openSync(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(5);
+    const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    return bytesRead === buffer.length && buffer.toString("ascii") === "%PDF-";
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 
 export default router;

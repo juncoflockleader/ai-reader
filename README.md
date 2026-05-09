@@ -19,6 +19,109 @@ http://127.0.0.1:5173
 
 The API server runs at `http://127.0.0.1:3127`.
 
+## Run On A Mac Mini
+
+For a home LAN deployment, build the frontend once and run the Express server as the single app process. The server will serve both the API and `dist/frontend`.
+
+```bash
+npm install
+npm run build
+
+HOST=0.0.0.0 \
+PORT=3127 \
+NODE_ENV=production \
+STUDYREADER_DATA_DIR=/Users/Shared/StudyReader/data \
+STUDYREADER_USER=family \
+STUDYREADER_PASSWORD='choose-a-shared-password' \
+npm run serve
+```
+
+Then open the app from another device on the home network:
+
+```text
+http://<mac-mini-ip>:3127
+```
+
+When `HOST=0.0.0.0`, the server refuses to start unless `STUDYREADER_USER` and `STUDYREADER_PASSWORD` are set. This is intentional because the app stores PDFs, reading history, settings, and LLM API keys locally.
+
+Useful environment variables:
+
+- `HOST`: listen address. Default is `127.0.0.1`; use `0.0.0.0` for LAN access.
+- `PORT`: app port. Default is `3127`.
+- `STUDYREADER_DATA_DIR`: data directory. Default is project-local `studyreader-data/`.
+- `STUDYREADER_USER` and `STUDYREADER_PASSWORD`: shared Basic Auth credentials.
+- `STUDYREADER_UPLOAD_MAX_MB`: PDF upload limit. Default is `512`.
+
+Do not port-forward this service directly to the public internet. If you need access away from home, use a VPN-style tool such as Tailscale or another private tunnel.
+
+### launchd Example
+
+Create `/Users/<you>/Library/LaunchAgents/com.studyreader.ai.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.studyreader.ai</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/<you>/Documents/ai-reader</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/npm</string>
+    <string>run</string>
+    <string>serve</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOST</key>
+    <string>0.0.0.0</string>
+    <key>PORT</key>
+    <string>3127</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+    <key>STUDYREADER_DATA_DIR</key>
+    <string>/Users/Shared/StudyReader/data</string>
+    <key>STUDYREADER_USER</key>
+    <string>family</string>
+    <key>STUDYREADER_PASSWORD</key>
+    <string>choose-a-shared-password</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/Shared/StudyReader/stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/Shared/StudyReader/stderr.log</string>
+</dict>
+</plist>
+```
+
+Load it:
+
+```bash
+mkdir -p /Users/Shared/StudyReader/data
+mkdir -p /Users/Shared/StudyReader
+launchctl load /Users/<you>/Library/LaunchAgents/com.studyreader.ai.plist
+```
+
+If `npm` is installed somewhere else, replace `/usr/local/bin/npm` with the output of `which npm`.
+
+### Moving Or Backing Up Data
+
+Stop the service first, then copy the whole data directory. For the default setup, copy `studyreader-data/`. For the Mac mini setup above, copy `/Users/Shared/StudyReader/data`.
+
+The important files are the SQLite database files (`app.db`, `app.db-wal`, `app.db-shm`) and the `books/` directory. Copy them together while the service is stopped so SQLite's WAL files stay consistent.
+
 ## What The MVP Includes
 
 - Local PDF upload and storage under `studyreader-data/`

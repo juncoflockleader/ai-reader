@@ -48,12 +48,38 @@ const rulerHeightLabels: Record<ReadingRulerHeight, string> = {
   large: "L"
 };
 
+const minReaderZoom = 0.7;
+const maxReaderZoom = 2.5;
+
+function readerZoomStorageKey(bookId: string) {
+  return `studyreader:reader:zoom:${bookId}`;
+}
+
+function readStoredReaderZoom(bookId: string) {
+  try {
+    const stored = window.localStorage.getItem(readerZoomStorageKey(bookId));
+    const parsed = Number(stored);
+    if (!Number.isFinite(parsed)) return 1;
+    return clamp(Math.round(parsed * 10) / 10, minReaderZoom, maxReaderZoom);
+  } catch {
+    return 1;
+  }
+}
+
+function persistReaderZoom(bookId: string, zoom: number) {
+  try {
+    window.localStorage.setItem(readerZoomStorageKey(bookId), String(zoom));
+  } catch {
+    // Ignore storage failures; zoom still updates for the current session.
+  }
+}
+
 export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion, onScreenshot }: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<Record<number, PageData>>({});
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [query, setQuery] = useState("");
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() => readStoredReaderZoom(book.id));
   const [contextMenu, setContextMenu] = useState<PdfContextMenu | null>(null);
   const [rulerEnabled, setRulerEnabled] = useState(false);
   const [rulerHeight, setRulerHeight] = useState<ReadingRulerHeight>("medium");
@@ -170,6 +196,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     return () => {
       cancelled = true;
     };
+  }, [book.id]);
+
+  useEffect(() => {
+    setZoom(readStoredReaderZoom(book.id));
   }, [book.id]);
 
   useEffect(() => {
@@ -467,7 +497,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   }
 
   function changeZoom(delta: number) {
-    setZoom((current) => clamp(Math.round((current + delta) * 10) / 10, 0.7, 2.5));
+    setZoom((current) => {
+      const next = clamp(Math.round((current + delta) * 10) / 10, minReaderZoom, maxReaderZoom);
+      persistReaderZoom(book.id, next);
+      return next;
+    });
   }
 
   function startRulerDrag(event: React.PointerEvent<HTMLDivElement>) {
@@ -559,11 +593,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           </div>
         )}
         <div className="zoom-controls" aria-label="PDF zoom controls">
-          <button className="tool-button" onClick={() => changeZoom(-0.1)} disabled={zoom <= 0.7} title="Zoom out">
+          <button className="tool-button" onClick={() => changeZoom(-0.1)} disabled={zoom <= minReaderZoom} title="Zoom out">
             <ZoomOut size={16} />
           </button>
           <span>{Math.round(zoom * 100)}%</span>
-          <button className="tool-button" onClick={() => changeZoom(0.1)} disabled={zoom >= 2.5} title="Zoom in">
+          <button className="tool-button" onClick={() => changeZoom(0.1)} disabled={zoom >= maxReaderZoom} title="Zoom in">
             <ZoomIn size={16} />
           </button>
         </div>
