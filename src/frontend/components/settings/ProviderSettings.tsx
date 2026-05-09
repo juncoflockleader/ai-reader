@@ -14,17 +14,25 @@ const chatModeDescriptions: Record<ChatMode, string> = {
   pdf_thinking: "Longer, more careful PDF-grounded explanations."
 };
 
+const chatModes = Object.keys(chatModeLabels) as ChatMode[];
+
+const providerLabels: Record<ProviderId, string> = {
+  openai: "OpenAI",
+  anthropic: "Claude"
+};
+
+const providerHeadings: Record<ProviderId, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic Claude"
+};
+
 export default function ProviderSettings({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [activeProvider, setActiveProvider] = useState<ProviderId>("openai");
-  const [customModel, setCustomModel] = useState(false);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     api<AppSettings>("/api/settings").then((result) => {
       setSettings(result);
-      setActiveProvider(result.defaultProvider);
-      setCustomModel(!result.models[result.defaultProvider].includes(result.providers[result.defaultProvider].model));
     });
   }, []);
 
@@ -35,21 +43,19 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
       body: JSON.stringify(settings)
     });
     setSettings(next);
-    setActiveProvider(next.defaultProvider);
     setStatus("Saved");
     onSaved();
   }
 
   async function test() {
     if (!settings) return;
-    const choices = settings.modelMode === "detailed" ? uniqueModelChoices(Object.values(settings.chatModels)) : [
-      {
-        provider: settings.defaultProvider,
-        model: settings.providers[settings.defaultProvider].model
-      }
-    ];
+    const provider = settings.defaultProvider;
+    const choices =
+      settings.modelMode === "detailed"
+        ? uniqueModelChoices(chatModes.map((chatMode) => ({ provider, model: settings.chatModels[chatMode].model })))
+        : [{ provider, model: settings.providers[provider].model }];
     if (choices.some((choice) => !choice.model.trim())) {
-      setStatus("Choose a model for each row before testing");
+      setStatus("Choose a model before testing");
       return;
     }
     setStatus(choices.length === 1 ? "Testing..." : `Testing ${choices.length} models...`);
@@ -79,26 +85,68 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
   }
 
   if (!settings) return null;
+  const activeProvider = settings.defaultProvider;
   const activeModels = settings.models[activeProvider];
   const activeModel = settings.providers[activeProvider].model;
-  const defaultValue = `${settings.defaultProvider}:${settings.providers[settings.defaultProvider].model}`;
-  const detailedMode = settings.modelMode === "detailed";
+  const usesCustomDefaultModel = !activeModels.includes(activeModel);
 
-  function updateChatModel(chatMode: ChatMode, choice: Partial<ModelChoice>) {
+  function updateDefaultProvider(provider: ProviderId) {
     if (!settings) return;
-    const currentSettings = settings;
-    const current = currentSettings.chatModels[chatMode];
-    const provider = choice.provider ?? current.provider;
-    const fallbackModel = currentSettings.providers[provider].model;
+    const nextModel = modelOrProviderDefault(settings.providers[provider].model, provider, settings);
     setSettings({
-      ...currentSettings,
-      chatModels: {
-        ...currentSettings.chatModels,
-        [chatMode]: {
-          provider,
-          model: choice.model ?? (provider === current.provider ? current.model : fallbackModel)
-        }
+      ...settings,
+      defaultProvider: provider,
+      providers: {
+        ...settings.providers,
+        [provider]: { ...settings.providers[provider], model: nextModel }
+      },
+      chatModels: migrateChatModels(settings, provider)
+    });
+    setStatus(`${providerLabels[provider]} selected as default`);
+  }
+
+  function updateDefaultModel(model: string) {
+    if (!settings) return;
+    const provider = settings.defaultProvider;
+    setSettings({
+      ...settings,
+      providers: {
+        ...settings.providers,
+        [provider]: { ...settings.providers[provider], model }
       }
+    });
+  }
+
+  function updateApiKey(apiKey: string) {
+    if (!settings) return;
+    const provider = settings.defaultProvider;
+    setSettings({
+      ...settings,
+      providers: {
+        ...settings.providers,
+        [provider]: { ...settings.providers[provider], apiKey }
+      }
+    });
+  }
+
+  function updateChatModel(chatMode: ChatMode, model: string) {
+    if (!settings) return;
+    const provider = settings.defaultProvider;
+    setSettings({
+      ...settings,
+      chatModels: {
+        ...settings.chatModels,
+        [chatMode]: { provider, model }
+      }
+    });
+  }
+
+  function updateModelMode(modelMode: AppSettings["modelMode"]) {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      modelMode,
+      chatModels: migrateChatModels(settings, settings.defaultProvider)
     });
   }
 
@@ -115,84 +163,85 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
           </button>
         </div>
 
-        <div className="provider-switch">
-          <button
-            className={settings.modelMode === "single" ? "mode active" : "mode"}
-            onClick={() => setSettings({ ...settings, modelMode: "single" })}
-          >
+        <div className="field">
+          <span>Default provider</span>
+          <div className="provider-switch">
+            {(["openai", "anthropic"] as const).map((provider) => (
+              <button
+                key={provider}
+                className={activeProvider === provider ? "mode active" : "mode"}
+                onClick={() => updateDefaultProvider(provider)}
+              >
+                {providerLabels[provider]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="provider-box">
+          <h3>{providerHeadings[activeProvider]}</h3>
+          <label className="field">
+            <span>API key {settings.providers[activeProvider].hasKey ? "(saved)" : ""}</span>
+            <div className="key-input">
+              <KeyRound size={16} />
+              <input
+                type="password"
+                placeholder={activeProvider === "openai" ? "sk-..." : "sk-ant-..."}
+                value={settings.providers[activeProvider].apiKey ?? ""}
+                onChange={(event) => updateApiKey(event.target.value)}
+              />
+            </div>
+          </label>
+        </div>
+
+        <div className="provider-switch" aria-label="Model mode">
+          <button className={settings.modelMode === "single" ? "mode active" : "mode"} onClick={() => updateModelMode("single")}>
             One model
           </button>
-          <button
-            className={settings.modelMode === "detailed" ? "mode active" : "mode"}
-            onClick={() => setSettings({ ...settings, modelMode: "detailed" })}
-          >
+          <button className={settings.modelMode === "detailed" ? "mode active" : "mode"} onClick={() => updateModelMode("detailed")}>
             Detailed
           </button>
         </div>
 
         {settings.modelMode === "single" ? (
           <label className="field">
-            <span>Default model</span>
+            <span>Model</span>
             <select
-              value={defaultValue}
-              onChange={(event) => {
-                const [provider, model] = event.target.value.split(":") as [ProviderId, string];
-                setActiveProvider(provider);
-                setCustomModel(false);
-                setSettings({
-                  ...settings,
-                  defaultProvider: provider,
-                  providers: {
-                    ...settings.providers,
-                    [provider]: { ...settings.providers[provider], model }
-                  }
-                });
-              }}
+              value={usesCustomDefaultModel ? "__custom" : activeModel}
+              onChange={(event) => updateDefaultModel(event.target.value === "__custom" ? "" : event.target.value)}
             >
-              <optgroup label="OpenAI">
-                {settings.models.openai.map((model) => (
-                  <option key={model} value={`openai:${model}`}>
-                    {model}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Claude">
-                {settings.models.anthropic.map((model) => (
-                  <option key={model} value={`anthropic:${model}`}>
-                    {model}
-                  </option>
-                ))}
-              </optgroup>
-              {!settings.models[settings.defaultProvider].includes(settings.providers[settings.defaultProvider].model) && (
-                <option value={defaultValue}>{settings.providers[settings.defaultProvider].model}</option>
-              )}
+              {activeModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+              <option value="__custom">Custom model...</option>
             </select>
+            {usesCustomDefaultModel && (
+              <input
+                className="text-input"
+                value={activeModel}
+                placeholder={providerDefaultModel(activeProvider, settings)}
+                onChange={(event) => updateDefaultModel(event.target.value)}
+              />
+            )}
           </label>
         ) : (
           <div className="detailed-models">
-            {(Object.keys(chatModeLabels) as ChatMode[]).map((chatMode) => {
+            {chatModes.map((chatMode) => {
               const choice = settings.chatModels[chatMode];
-              const models = settings.models[choice.provider];
-              const usesCustomModel = !models.includes(choice.model);
+              const usesCustomModel = !activeModels.includes(choice.model);
               return (
                 <div className="detailed-model-row" key={chatMode}>
                   <div>
                     <strong>{chatModeLabels[chatMode]}</strong>
                     <span>{chatModeDescriptions[chatMode]}</span>
                   </div>
-                  <select value={choice.provider} onChange={(event) => updateChatModel(chatMode, { provider: event.target.value as ProviderId })}>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Claude</option>
-                  </select>
                   <select
                     value={usesCustomModel ? "__custom" : choice.model}
-                    onChange={(event) =>
-                      updateChatModel(chatMode, {
-                        model: event.target.value === "__custom" ? "" : event.target.value
-                      })
-                    }
+                    onChange={(event) => updateChatModel(chatMode, event.target.value === "__custom" ? "" : event.target.value)}
                   >
-                    {models.map((model) => (
+                    {activeModels.map((model) => (
                       <option key={model} value={model}>
                         {model}
                       </option>
@@ -203,8 +252,8 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
                     <input
                       className="text-input detailed-custom-model"
                       value={choice.model}
-                      placeholder={choice.provider === "openai" ? "gpt-4.1-mini" : "claude-sonnet-4-6"}
-                      onChange={(event) => updateChatModel(chatMode, { model: event.target.value })}
+                      placeholder={chatModeDefaultModel(activeProvider, chatMode, settings)}
+                      onChange={(event) => updateChatModel(chatMode, event.target.value)}
                     />
                   )}
                 </div>
@@ -212,100 +261,6 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
             })}
           </div>
         )}
-
-        <div className="provider-switch">
-          {(["openai", "anthropic"] as const).map((provider) => (
-            <button
-              key={provider}
-              className={activeProvider === provider ? "mode active" : "mode"}
-              onClick={() => {
-                setActiveProvider(provider);
-                setCustomModel(!settings.models[provider].includes(settings.providers[provider].model));
-              }}
-            >
-              {provider === "openai" ? "OpenAI" : "Claude"}
-            </button>
-          ))}
-        </div>
-
-        <div className="provider-box">
-          <h3>{activeProvider === "openai" ? "OpenAI" : "Anthropic Claude"}</h3>
-          <label className="field">
-            <span>API key {settings.providers[activeProvider].hasKey ? "(saved)" : ""}</span>
-            <div className="key-input">
-              <KeyRound size={16} />
-              <input
-                type="password"
-                placeholder={activeProvider === "openai" ? "sk-..." : "sk-ant-..."}
-                value={settings.providers[activeProvider].apiKey ?? ""}
-                onChange={(event) =>
-                  setSettings({
-                    ...settings,
-                    providers: {
-                      ...settings.providers,
-                      [activeProvider]: { ...settings.providers[activeProvider], apiKey: event.target.value }
-                    }
-                  })
-                }
-              />
-            </div>
-          </label>
-          <label className={detailedMode ? "field disabled-field" : "field"}>
-            <span>Model</span>
-            {customModel ? (
-              <input
-                className="text-input"
-                disabled={detailedMode}
-                value={activeModel}
-                placeholder={activeProvider === "openai" ? "gpt-4.1-mini" : "claude-sonnet-4-6"}
-                onChange={(event) =>
-                  setSettings({
-                    ...settings,
-                    defaultProvider: activeProvider,
-                    providers: {
-                      ...settings.providers,
-                      [activeProvider]: { ...settings.providers[activeProvider], model: event.target.value }
-                    }
-                  })
-                }
-              />
-            ) : (
-              <select
-                disabled={detailedMode}
-                value={activeModels.includes(activeModel) ? activeModel : "__custom"}
-                onChange={(event) =>
-                  event.target.value === "__custom"
-                    ? setCustomModel(true)
-                    : setSettings({
-                        ...settings,
-                        defaultProvider: activeProvider,
-                        providers: {
-                          ...settings.providers,
-                          [activeProvider]: { ...settings.providers[activeProvider], model: event.target.value }
-                        }
-                      })
-                }
-              >
-                {activeModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-                <option value="__custom">Custom model...</option>
-              </select>
-            )}
-          </label>
-          <button
-            className="link-button"
-            disabled={detailedMode}
-            onClick={() => {
-              setSettings({ ...settings, defaultProvider: activeProvider });
-              setStatus(`${activeProvider === "openai" ? "OpenAI" : "Claude"} selected as default`);
-            }}
-          >
-            Use this provider as default
-          </button>
-        </div>
 
         <label className="check-row">
           <input
@@ -319,11 +274,42 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
         <div className="modal-actions">
           <span>{status}</span>
           <button onClick={test}>Test</button>
-          <button className="primary-button compact" onClick={save}>Save</button>
+          <button className="primary-button compact" onClick={save}>
+            Save
+          </button>
         </div>
       </section>
     </div>
   );
+}
+
+function migrateChatModels(settings: AppSettings, provider: ProviderId) {
+  return Object.fromEntries(
+    chatModes.map((chatMode) => {
+      const current = settings.chatModels[chatMode];
+      const model =
+        current.provider === provider && current.model.trim()
+          ? current.model.trim()
+          : chatModeDefaultModel(provider, chatMode, settings);
+      return [chatMode, { provider, model }];
+    })
+  ) as AppSettings["chatModels"];
+}
+
+function providerDefaultModel(provider: ProviderId, settings: AppSettings) {
+  return settings.models[provider][0] ?? (provider === "openai" ? "gpt-4.1-mini" : "claude-sonnet-4-6");
+}
+
+function chatModeDefaultModel(provider: ProviderId, chatMode: ChatMode, settings: AppSettings) {
+  if (provider === "openai" && chatMode === "pdf_thinking" && settings.models.openai.includes("gpt-4.1")) {
+    return "gpt-4.1";
+  }
+  return providerDefaultModel(provider, settings);
+}
+
+function modelOrProviderDefault(model: string | undefined, provider: ProviderId, settings: AppSettings) {
+  const trimmed = model?.trim();
+  return trimmed || providerDefaultModel(provider, settings);
 }
 
 function uniqueModelChoices(choices: ModelChoice[]) {
@@ -337,5 +323,5 @@ function uniqueModelChoices(choices: ModelChoice[]) {
 }
 
 function formatModelChoice(choice: ModelChoice) {
-  return `${choice.provider === "openai" ? "OpenAI" : "Claude"} ${choice.model}`;
+  return `${providerLabels[choice.provider]} ${choice.model}`;
 }

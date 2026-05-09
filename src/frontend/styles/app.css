@@ -1270,6 +1270,28 @@ button:disabled {
   margin: 12px 0;
 }
 
+.settings-modal .provider-switch .mode {
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid #cbd7d5;
+  border-radius: 7px;
+  background: #f3f7f5;
+  color: #40525a;
+  font-size: 14px;
+  font-weight: 680;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.settings-modal .provider-switch .mode.active {
+  border-color: #2d675b;
+  background: #e5f1ed;
+  color: #204b43;
+  box-shadow: inset 0 0 0 1px rgba(45, 103, 91, 0.16);
+}
+
 .provider-box h3 {
   margin: 0 0 10px;
   font-size: 16px;
@@ -1283,7 +1305,7 @@ button:disabled {
 
 .detailed-model-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(110px, 0.5fr) minmax(170px, 1fr);
+  grid-template-columns: minmax(170px, 0.9fr) minmax(260px, 1.15fr);
   gap: 8px;
   align-items: center;
   padding: 10px;
@@ -1292,8 +1314,37 @@ button:disabled {
   background: #fff;
 }
 
+.detailed-model-row select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid #bfcbcb;
+  border-radius: 7px;
+  background: #fdfefe;
+  color: #243940;
+  padding: 8px 10px;
+  outline: 0;
+}
+
+.settings-modal .field select {
+  outline: 0;
+}
+
+.detailed-model-row select:hover,
+.settings-modal .field select:hover {
+  border-color: #8fa5a2;
+}
+
+.detailed-model-row select:focus,
+.settings-modal .field select:focus,
+.settings-modal .text-input:focus,
+.key-input:focus-within {
+  border-color: #2d675b;
+  box-shadow: 0 0 0 3px rgba(45, 103, 91, 0.14);
+}
+
 .detailed-custom-model {
-  grid-column: 3;
+  grid-column: 2;
 }
 
 .detailed-model-row > div {
@@ -1519,6 +1570,10 @@ button:disabled {
 
   .detailed-model-row {
     grid-template-columns: 1fr;
+  }
+
+  .detailed-custom-model {
+    grid-column: 1;
   }
 
   .book-row > button:not(.tool-button) {

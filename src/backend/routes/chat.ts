@@ -2,17 +2,11 @@ import { Router } from "express";
 import { assembleContext, citationCandidates } from "../services/context/assembleContext";
 import { getProvider, normalizeModel } from "../services/llm";
 import { getDb, id, json, nowIso, parseJson } from "../services/storage/db";
-import { getApiKey, getSetting } from "./settings";
+import { getApiKey, getAppSettings } from "./settings";
 
 const router = Router();
 type ProviderId = "openai" | "anthropic";
 type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
-type ChatSettings = {
-  defaultProvider: ProviderId;
-  providers: Record<ProviderId, { model: string }>;
-  modelMode?: "single" | "detailed";
-  chatModels?: Partial<Record<ChatMode, { provider: ProviderId; model: string }>>;
-};
 type ImageAttachment = {
   type: "image";
   dataUrl: string;
@@ -28,21 +22,15 @@ router.post("/", async (req, res, next) => {
       return;
     }
 
-    const settings = getSetting<ChatSettings>("app.settings", {
-      defaultProvider: "openai",
-      providers: {
-        openai: { model: "gpt-4.1-mini" },
-        anthropic: { model: "claude-sonnet-4-6" }
-      }
-    });
+    const settings = getAppSettings();
     const attachments = normalizeAttachments(req.body.attachments);
     const chatMode = normalizeChatMode(req.body.chat_mode);
     const configuredChoice =
-      settings.modelMode === "detailed" && settings.chatModels?.[chatMode]
+      settings.modelMode === "detailed"
         ? settings.chatModels[chatMode]
         : { provider: settings.defaultProvider, model: settings.providers[settings.defaultProvider].model };
-    const providerId = normalizeProvider(req.body.provider ?? configuredChoice.provider);
-    const model = normalizeModel(providerId, req.body.model ?? configuredChoice.model ?? settings.providers[providerId].model);
+    const providerId = normalizeProvider(configuredChoice.provider);
+    const model = normalizeModel(providerId, configuredChoice.model);
     const apiKey = getApiKey(providerId);
     if (!apiKey) {
       res.status(400).json({ error: `Missing ${providerId} API key. Add it in Settings before asking AI questions.` });

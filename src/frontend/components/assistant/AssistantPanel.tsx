@@ -1,6 +1,6 @@
 import { ChevronDown, CornerDownRight, RefreshCw, Send, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice, type ProviderId } from "../../api";
+import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice } from "../../api";
 import MarkdownText from "../common/MarkdownText";
 import { getAction } from "../../actions/registry";
 
@@ -52,8 +52,6 @@ export default function AssistantPanel({
   const [contextScope, setContextScope] = useState<"selection" | "page" | "document">(
     preferredScope === "selection" || preferredScope === "page" || preferredScope === "document" ? preferredScope : "page"
   );
-  const [provider, setProvider] = useState<ProviderId>("openai");
-  const [model, setModel] = useState("gpt-4.1-mini");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [followUpMessage, setFollowUpMessage] = useState<{ role: ChatMessage["role"]; content: string } | null>(null);
@@ -69,29 +67,9 @@ export default function AssistantPanel({
     api<AppSettings>("/api/settings")
       .then((settings) => {
         setSettings(settings);
-        const choice = modelChoiceForMode(settings, chatMode);
-        setProvider(choice.provider);
-        setModel(choice.model);
       })
       .catch(() => undefined);
   }, [settingsVersion, chatMode]);
-
-  useEffect(() => {
-    if (!settings) return;
-    const choice = modelChoiceForMode(settings, chatMode);
-    const saved = localStorage.getItem(`studyreader:assistant:modelChoice:${chatMode}`);
-    if (saved) {
-      const [savedProvider, ...modelParts] = saved.split(":");
-      const savedModel = modelParts.join(":");
-      if ((savedProvider === "openai" || savedProvider === "anthropic") && savedModel.trim()) {
-        setProvider(savedProvider);
-        setModel(savedModel);
-        return;
-      }
-    }
-    setProvider(choice.provider);
-    setModel(choice.model);
-  }, [settings, chatMode]);
 
   useEffect(() => {
     localStorage.setItem("studyreader:assistant:chatMode", chatMode);
@@ -100,10 +78,6 @@ export default function AssistantPanel({
   useEffect(() => {
     localStorage.setItem("studyreader:assistant:contextScope", contextScope);
   }, [contextScope]);
-
-  useEffect(() => {
-    localStorage.setItem(`studyreader:assistant:modelChoice:${chatMode}`, `${provider}:${model}`);
-  }, [chatMode, provider, model]);
 
   useEffect(() => {
     if (!draftQuestion) return;
@@ -164,6 +138,21 @@ export default function AssistantPanel({
     setBusy(true);
     setMessages((current) => [...current, { role: "user", content: userText, attachments: outgoingAttachments }]);
     try {
+      const chatPayload = {
+        book_id: book.id,
+        conversation_id: conversationId,
+        question: userText,
+        current_page: currentPage,
+        selected_text: selectedText,
+        context_scope: requestedScope,
+        attachments: outgoingAttachments.map((attachment) => ({
+          type: attachment.type,
+          dataUrl: attachment.dataUrl,
+          mimeType: attachment.mimeType
+        })),
+        chat_mode: chatMode,
+        follow_up_message: followUpMessage ? `${followUpMessage.role}: ${followUpMessage.content}` : undefined
+      };
       const result = await api<{
         conversation_id: string;
         answer: string;
@@ -171,23 +160,7 @@ export default function AssistantPanel({
         context_used: unknown;
       }>("/api/chat", {
         method: "POST",
-        body: JSON.stringify({
-          book_id: book.id,
-          conversation_id: conversationId,
-          question: userText,
-          current_page: currentPage,
-          selected_text: selectedText,
-          context_scope: requestedScope,
-          attachments: outgoingAttachments.map((attachment) => ({
-            type: attachment.type,
-            dataUrl: attachment.dataUrl,
-            mimeType: attachment.mimeType
-          })),
-          chat_mode: chatMode,
-          follow_up_message: followUpMessage ? `${followUpMessage.role}: ${followUpMessage.content}` : undefined,
-          provider,
-          model
-        })
+        body: JSON.stringify(chatPayload)
       });
       setConversationId(result.conversation_id);
       setContextUsed(result.context_used);
@@ -248,32 +221,19 @@ export default function AssistantPanel({
     }
   }
 
+  const currentModelChoice: ModelChoice = settings ? modelChoiceForMode(settings, chatMode) : { provider: "openai", model: "gpt-4.1-mini" };
+
   return (
     <aside className="assistant-panel">
       <div className="assistant-header">
         <div>
           <h2>Study Assistant</h2>
-          <p>Page {currentPage} · {selectedText ? "selection included" : "current page context"} · {model}</p>
+          <p>Page {currentPage} · {selectedText ? "selection included" : "current page context"} · {currentModelChoice.model}</p>
         </div>
         <div className="assistant-actions">
-          {settings?.modelMode === "detailed" ? (
-            <div className="model-badge" title="Configured in Settings">
-              {provider === "openai" ? "OpenAI" : "Claude"}
-            </div>
-          ) : (
-            <select
-              value={provider}
-              onChange={(event) => {
-                const nextProvider = event.target.value as ProviderId;
-                setProvider(nextProvider);
-                setModel(settings?.providers[nextProvider].model ?? (nextProvider === "openai" ? "gpt-4.1-mini" : "claude-sonnet-4-6"));
-              }}
-              aria-label="LLM provider"
-            >
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Claude</option>
-            </select>
-          )}
+          <div className="model-badge" title="Configured in Settings">
+            {currentModelChoice.provider === "openai" ? "OpenAI" : "Claude"}
+          </div>
           <button
             className="icon-button danger"
             onClick={() => void clearChatHistory()}
