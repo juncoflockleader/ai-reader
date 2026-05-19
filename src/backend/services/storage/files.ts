@@ -10,9 +10,17 @@ export const dataDir = process.env.STUDYREADER_DATA_DIR
 export const booksDir = path.join(dataDir, "books");
 export const tmpDir = path.join(dataDir, "tmp");
 
+export const writerDataDir = process.env.STUDYWRITER_DATA_DIR
+  ? path.resolve(process.env.STUDYWRITER_DATA_DIR)
+  : path.join(root, "studywriter-data");
+
 export function ensureDataDirs() {
   fs.mkdirSync(booksDir, { recursive: true });
   fs.mkdirSync(tmpDir, { recursive: true });
+}
+
+export function ensureWriterDataDir() {
+  fs.mkdirSync(writerDataDir, { recursive: true });
 }
 
 export function getBookDir(bookId: string) {
