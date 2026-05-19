@@ -1,5 +1,6 @@
 import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Keyboard, Ruler, Search, Settings2, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -537,9 +538,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const bookmarks = displayHighlights.filter((highlight) => highlight.color === "bookmark" || highlight.anchor?.type === "bookmark");
   const pageHighlights = displayHighlights.filter((highlight) => highlight.color !== "bookmark" && highlight.anchor?.type !== "bookmark");
 
-  return (
-    <section className="pdf-panel">
-      <div className="panel-toolbar">
+  const toolbar = (
+    <div className="panel-toolbar app-topbar-toolbar">
         <div className="panel-book-meta" title={book.file_name}>
           <span className="topbar-book-label">Reading</span>
           <strong>{book.title ?? book.file_name}</strong>
@@ -611,7 +611,12 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         <button className={commandPaletteOpen ? "tool-button active" : "tool-button"} onClick={() => setCommandPaletteOpen((open) => !open)} title="Command palette (Ctrl/Cmd+K)">
           <Keyboard size={16} />
         </button>
-      </div>
+    </div>
+  );
+
+  return (
+    <section className="pdf-panel">
+      {createPortal(toolbar, document.getElementById("app-topbar-tools") ?? document.body)}
       <div
         className="reading-progress"
         aria-label="Reading progress"
