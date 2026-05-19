@@ -15,7 +15,15 @@ let db: DatabaseSync | null = null;
 export function getDb() {
   if (db) return db;
   ensureDataDirs();
-  db = new DatabaseSync(path.join(dataDir, "app.db"));
+
+  const readerDbPath = path.join(dataDir, "reader.db");
+  const legacyDbPath = path.join(dataDir, "app.db");
+
+  if (fs.existsSync(legacyDbPath) && !fs.existsSync(readerDbPath)) {
+    fs.renameSync(legacyDbPath, readerDbPath);
+  }
+
+  db = new DatabaseSync(readerDbPath);
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(fs.readFileSync(schemaPath, "utf8"));
   return db;
