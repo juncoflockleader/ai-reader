@@ -48,7 +48,7 @@ button:disabled {
   align-items: center;
   padding: 0 14px;
   border-bottom: 1px solid #d5dbdf;
-  background: #fbfcfc;
+  background: linear-gradient(90deg, #f5f8f7 0%, #fbfcfc 45%, #f4f8f8 100%);
 }
 
 .brand {
@@ -60,26 +60,26 @@ button:disabled {
   white-space: nowrap;
 }
 
-.library-strip {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
+.topbar-book-meta {
+  min-width: 0;
+  display: grid;
+  line-height: 1.2;
 }
 
-.book-tab {
-  max-width: 220px;
-  padding: 8px 10px;
-  border-radius: 7px;
-  background: #edf1f2;
-  color: #405058;
+.topbar-book-meta strong {
+  min-width: 0;
+  color: #23444f;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.book-tab.active {
-  background: #285466;
-  color: #fff;
+.topbar-book-label {
+  color: #6e8188;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .icon-button,
@@ -1035,6 +1035,32 @@ button:disabled {
   flex-wrap: wrap;
   gap: 10px;
   min-width: 0;
+}
+.composer-options-toggle {
+  grid-column: 1 / -1;
+  border: 1px solid #dce5e3;
+  border-radius: 10px;
+  background: #f9fcfb;
+}
+.composer-options-toggle summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #46625a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.composer-options-toggle summary::-webkit-details-marker { display: none; }
+.composer-options-toggle summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.composer-options-toggle[open] summary svg:last-child {
+  transform: rotate(180deg);
 }
 
 .composer-option-group {
