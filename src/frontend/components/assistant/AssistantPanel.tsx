@@ -1,4 +1,4 @@
-import { ChevronDown, CornerDownRight, RefreshCw, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, CornerDownRight, RefreshCw, Send, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice } from "../../api";
 import MarkdownText from "../common/MarkdownText";
@@ -58,6 +58,7 @@ export default function AssistantPanel({
   const [contextUsed, setContextUsed] = useState<unknown>(null);
   const [savedNoteKeys, setSavedNoteKeys] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
+  const [composerOptionsOpen, setComposerOptionsOpen] = useState(() => localStorage.getItem("studyreader:assistant:composerOpen") !== "0");
   const [error, setError] = useState("");
   const [, setRecentPrompts] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:recentPrompts") ?? "[]"));
   const [, setSavedTemplates] = useState<string[]>(() => JSON.parse(localStorage.getItem("studyreader:savedPromptTemplates") ?? "[]"));
@@ -78,6 +79,9 @@ export default function AssistantPanel({
   useEffect(() => {
     localStorage.setItem("studyreader:assistant:contextScope", contextScope);
   }, [contextScope]);
+  useEffect(() => {
+    localStorage.setItem("studyreader:assistant:composerOpen", composerOptionsOpen ? "1" : "0");
+  }, [composerOptionsOpen]);
 
   useEffect(() => {
     if (!draftQuestion) return;
@@ -298,28 +302,34 @@ export default function AssistantPanel({
       {error && <div className="inline-error">{error}</div>}
 
       <div className="chat-input">
-        <div className="composer-options">
-          <div className="composer-option-group" aria-label="Context">
-            <span>Context</span>
-            <div className="compact-chip-row">
-              {contextScopes.map(([scope, short, label]) => (
-                <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)} title={label}>
-                  {short}
-                </button>
-              ))}
+        <details className="composer-options-toggle" open={composerOptionsOpen} onToggle={(event) => setComposerOptionsOpen((event.currentTarget as HTMLDetailsElement).open)}>
+          <summary>
+            <span><SlidersHorizontal size={14} /> Chat options</span>
+            <ChevronDown size={14} />
+          </summary>
+          <div className="composer-options">
+            <div className="composer-option-group" aria-label="Context">
+              <span>Context</span>
+              <div className="compact-chip-row">
+                {contextScopes.map(([scope, short, label]) => (
+                  <button key={scope} className={contextScope === scope ? "context-chip active" : "context-chip"} onClick={() => setContextScope(scope)} title={label}>
+                    {short}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="composer-option-group" aria-label="Response style">
+              <span>Response</span>
+              <div className="compact-chip-row">
+                {responseStyles.map(([value, short, label]) => (
+                  <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)} title={label}>
+                    {short}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="composer-option-group" aria-label="Response style">
-            <span>Response</span>
-            <div className="compact-chip-row">
-              {responseStyles.map(([value, short, label]) => (
-                <button key={value} className={chatMode === value ? "mode active" : "mode"} onClick={() => setChatMode(value)} title={label}>
-                  {short}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        </details>
         <div className="follow-up-suggestions">
           {quickSuggestions({ selectedText, currentPage, hasAssistantMessage: messages.some((message) => message.role === "assistant") }).map((suggestion) => (
             <button key={suggestion} onClick={() => setQuestion(suggestion)}>

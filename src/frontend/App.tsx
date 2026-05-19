@@ -195,23 +195,17 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <BookOpen size={22} />
-          <span>StudyReader AI</span>
+          <span>StudyReader</span>
         </div>
-        <div className="library-strip">
-          {books.map((book) => (
-            <button
-              key={book.id}
-              className={book.id === activeBook?.id ? "book-tab active" : "book-tab"}
-              onClick={() => {
-                setActiveBook(book);
-                setSelectedText("");
-                setPendingAttachments([]);
-              }}
-              title={book.file_name}
-            >
-              {book.title ?? book.file_name}
-            </button>
-          ))}
+        <div className="topbar-book-meta">
+          {activeBook ? (
+            <>
+              <span className="topbar-book-label">Reading</span>
+              <strong title={activeBook.file_name}>{activeBook.title ?? activeBook.file_name}</strong>
+            </>
+          ) : (
+            <span className="topbar-book-label">No book selected</span>
+          )}
         </div>
         <label className="icon-button" title="Upload file">
           <Upload size={18} />
@@ -328,6 +322,14 @@ export default function App() {
         <BookManager
           books={books}
           activeBook={activeBook}
+          onSelectBook={(bookId) => {
+            const nextBook = books.find((book) => book.id === bookId);
+            if (!nextBook) return;
+            setActiveBook(nextBook);
+            setSelectedText("");
+            setPendingAttachments([]);
+            setBooksOpen(false);
+          }}
           onClose={() => setBooksOpen(false)}
           onBooksChanged={(activeBookId) => void refreshBooksAfterManagement(activeBookId)}
           onUserDataCleared={(bookId) => {

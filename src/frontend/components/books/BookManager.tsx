@@ -8,9 +8,10 @@ type Props = {
   onClose: () => void;
   onBooksChanged: (activeBookId?: string | null) => void;
   onUserDataCleared: (bookId: string) => void;
+  onSelectBook: (bookId: string) => void;
 };
 
-export default function BookManager({ books, activeBook, onClose, onBooksChanged, onUserDataCleared }: Props) {
+export default function BookManager({ books, activeBook, onClose, onBooksChanged, onUserDataCleared, onSelectBook }: Props) {
   const [editing, setEditing] = useState<Record<string, string>>(() =>
     Object.fromEntries(books.map((book) => [book.id, book.title ?? book.file_name]))
   );
@@ -111,6 +112,13 @@ export default function BookManager({ books, activeBook, onClose, onBooksChanged
                 </div>
               </div>
               <button onClick={() => rename(book)} disabled={busyBook === book.id}>Save</button>
+              <button
+                className={activeBook?.id === book.id ? "tool-button active" : "tool-button"}
+                onClick={() => onSelectBook(book.id)}
+                title={activeBook?.id === book.id ? "Currently selected" : "Read this book"}
+              >
+                Read
+              </button>
               <button className="tool-button" onClick={() => reanalyze(book)} disabled={busyBook === book.id} title="Re-analyze">
                 <RefreshCw size={16} />
               </button>
