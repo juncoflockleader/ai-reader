@@ -201,6 +201,7 @@ export default function App() {
             </span>
           </div>
           <div id="app-topbar-tools" className="topbar-tools" />
+          <div id="app-topbar-assistant" className="topbar-assistant" />
           <div className="topbar-actions">
         <label className="icon-button" title="Upload file">
           <Upload size={18} />

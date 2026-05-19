@@ -1,4 +1,5 @@
 import { ChevronDown, CornerDownRight, RefreshCw, Send, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice } from "../../api";
 import MarkdownText from "../common/MarkdownText";
@@ -227,17 +228,15 @@ export default function AssistantPanel({
 
   const currentModelChoice: ModelChoice = settings ? modelChoiceForMode(settings, chatMode) : { provider: "openai", model: "gpt-4.1-mini" };
 
+  const contextScopeLabel = contextScope === "selection" ? "Reading only selected text" : contextScope === "document" ? "Reading across the full document" : `Reading around page ${currentPage}`;
+  const providerLabel = currentModelChoice.provider === "openai" ? "OpenAI" : "Claude";
+
   return (
     <aside className="assistant-panel">
-      <div className="assistant-header">
-        <div>
-          <h2>Study Assistant</h2>
-          <p>Page {currentPage} · {selectedText ? "selection included" : "current page context"} · {currentModelChoice.model}</p>
-        </div>
-        <div className="assistant-actions">
-          <div className="model-badge" title="Configured in Settings">
-            {currentModelChoice.provider === "openai" ? "OpenAI" : "Claude"}
-          </div>
+      {createPortal(
+        <div className="assistant-topbar-group" role="status" aria-live="polite">
+          <span className="assistant-topbar-pill" title="Current context range">{contextScopeLabel}</span>
+          <span className="assistant-topbar-pill" title="Current provider and model">{providerLabel} · {currentModelChoice.model}</span>
           <button
             className="icon-button danger"
             onClick={() => void clearChatHistory()}
@@ -246,8 +245,9 @@ export default function AssistantPanel({
           >
             <Trash2 size={16} />
           </button>
-        </div>
-      </div>
+        </div>,
+        document.getElementById("app-topbar-assistant") ?? document.body
+      )}
 
       <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
