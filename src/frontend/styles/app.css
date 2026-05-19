@@ -85,6 +85,10 @@ button:disabled {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  border: 1px solid #c4d0d6;
+  border-radius: 10px;
+  padding: 4px;
+  background: rgba(245, 250, 252, 0.9);
 }
 
 .assistant-topbar-pill {
@@ -97,6 +101,24 @@ button:disabled {
   color: #2a4a53;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.assistant-topbar-pill-multiline {
+  display: grid;
+  align-items: start;
+  gap: 2px;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.assistant-topbar-pill-multiline strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assistant-topbar-pill-multiline small {
+  color: #57727c;
+  font-size: 11px;
 }
 
 .brand {
@@ -192,7 +214,7 @@ button:disabled {
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(420px, 1.25fr) minmax(360px, 0.75fr);
+  grid-template-columns: minmax(500px, 1.4fr) minmax(360px, 0.75fr);
 }
 
 .pdf-panel,
@@ -322,6 +344,12 @@ button:disabled {
   color: #243b43;
 }
 
+.page-stepper button img {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .page-stepper input {
   width: 54px;
   border: 1px solid #bdc9ce;
@@ -344,7 +372,7 @@ button:disabled {
 
 .search-box {
   flex: 1;
-  max-width: 360px;
+  max-width: 460px;
 }
 
 .search-box input,
