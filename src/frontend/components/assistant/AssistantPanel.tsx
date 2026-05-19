@@ -228,15 +228,21 @@ export default function AssistantPanel({
 
   const currentModelChoice: ModelChoice = settings ? modelChoiceForMode(settings, chatMode) : { provider: "openai", model: "gpt-4.1-mini" };
 
-  const contextScopeLabel = contextScope === "selection" ? "Reading only selected text" : contextScope === "document" ? "Reading across the full document" : `Reading around page ${currentPage}`;
   const providerLabel = currentModelChoice.provider === "openai" ? "OpenAI" : "Claude";
+  const contextStatus = chatMode === "no_context_fast"
+    ? "No context"
+    : contextScope === "document" || contextScope === "selection"
+      ? "Book context"
+      : "Page context";
 
   return (
     <aside className="assistant-panel">
       {createPortal(
         <div className="assistant-topbar-group" role="status" aria-live="polite">
-          <span className="assistant-topbar-pill" title="Current context range">{contextScopeLabel}</span>
-          <span className="assistant-topbar-pill" title="Current provider and model">{providerLabel} · {currentModelChoice.model}</span>
+          <span className="assistant-topbar-pill assistant-topbar-pill-multiline" title="Current provider, model, and context">
+            <strong>{providerLabel} · {currentModelChoice.model}</strong>
+            <small>{contextStatus}</small>
+          </span>
           <button
             className="icon-button danger"
             onClick={() => void clearChatHistory()}

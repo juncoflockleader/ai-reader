@@ -51,6 +51,8 @@ const rulerHeightLabels: Record<ReadingRulerHeight, string> = {
 
 const minReaderZoom = 0.7;
 const maxReaderZoom = 2.5;
+const PREV_ICON_BASE64 = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDE0IDE0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNOCAyTDMgN0w4IDEyIiBzdHJva2U9IiMyNDNiNDMiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=";
+const NEXT_ICON_BASE64 = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDE0IDE0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNNiAyTDExIDdMNiAxMiIgc3Ryb2tlPSIjMjQzYjQzIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+";
 
 function readerZoomStorageKey(bookId: string) {
   return `studyreader:reader:zoom:${bookId}`;
@@ -545,13 +547,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <strong>{book.title ?? book.file_name}</strong>
         </div>
         <div className="page-stepper">
-          <button onClick={() => changePage(currentPage - 1)}>Prev</button>
+          <button onClick={() => changePage(currentPage - 1)} title="Previous page" aria-label="Previous page">
+            <img src={`data:image/svg+xml;base64,${PREV_ICON_BASE64}`} alt="" />
+          </button>
           <input
             value={currentPage}
             onChange={(event) => changePage(Number(event.target.value))}
           />
           <span>/ {book.page_count || "..."}</span>
-          <button onClick={() => changePage(currentPage + 1)}>Next</button>
+          <button onClick={() => changePage(currentPage + 1)} title="Next page" aria-label="Next page">
+            <img src={`data:image/svg+xml;base64,${NEXT_ICON_BASE64}`} alt="" />
+          </button>
         </div>
         <label className="search-box">
           <Search size={16} />
