@@ -540,6 +540,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   return (
     <section className="pdf-panel">
       <div className="panel-toolbar">
+        <div className="panel-book-meta" title={book.file_name}>
+          <span className="topbar-book-label">Reading</span>
+          <strong>{book.title ?? book.file_name}</strong>
+        </div>
         <div className="page-stepper">
           <button onClick={() => changePage(currentPage - 1)}>Prev</button>
           <input
