@@ -1,4 +1,4 @@
-import { BookOpen, Library, PanelRightOpen, Settings, StickyNote, Upload, X } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, Library, PanelRightOpen, Settings, Sparkles, StickyNote, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
@@ -154,10 +154,41 @@ export default function App() {
   return (
     <div className="app-shell">
       {startOpen && (
-        <div className="start-screen">
-          <div className="start-card">
-            <h1>Choose an app</h1>
-            <button className="start-app" onClick={() => setStartOpen(false)}>AI Reader</button>
+        <div className="start-screen" role="dialog" aria-modal="true" aria-label="Choose your learning experience">
+          <div className="start-hero">
+            <p className="start-kicker">Welcome</p>
+            <h1>AI Powered Learning</h1>
+            <p className="start-subtitle">for self-driven learners</p>
+            <p className="start-description">Pick your workspace to begin focused reading, deeper understanding, and better retention.</p>
+
+            <div className="start-grid">
+              <button className="start-choice start-choice-primary" onClick={() => setStartOpen(false)}>
+                <span className="start-choice-icon"><BookOpen size={18} /></span>
+                <span className="start-choice-content">
+                  <strong>AI Reader</strong>
+                  <small>Read PDFs and notes, ask questions, and capture insights in one place.</small>
+                </span>
+                <ArrowRight size={16} />
+              </button>
+
+              <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
+                <span className="start-choice-icon"><Sparkles size={18} /></span>
+                <span className="start-choice-content">
+                  <strong>Practice Coach</strong>
+                  <small>Personalized drills and spaced repetition to reinforce what you learn.</small>
+                </span>
+                <span className="start-pill">Coming soon</span>
+              </article>
+
+              <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
+                <span className="start-choice-icon"><Brain size={18} /></span>
+                <span className="start-choice-content">
+                  <strong>Concept Mapper</strong>
+                  <small>Turn chapters into connected ideas so complex topics feel easier.</small>
+                </span>
+                <span className="start-pill">Coming soon</span>
+              </article>
+            </div>
           </div>
         </div>
       )}
