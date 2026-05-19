@@ -1,16 +1,16 @@
 # Writer Assistant App TODO
 
 ## Milestone 0 — Project Setup
-- [ ] Add writer app routes namespace under `/api/writer/*`.
-- [ ] Introduce writer-specific config values (`STUDYWRITER_DATA_DIR`, `STUDYWRITER_DB_PATH`).
-- [ ] Create writer DB bootstrap service (`getWriterDb`) separate from reader DB.
-- [ ] Wire writer schema initialization from `src/backend/db/writer.schema.sql`.
+- [x] Add writer app routes namespace under `/api/writer/*`.
+- [x] Introduce writer-specific config values (`STUDYWRITER_DATA_DIR`, `STUDYWRITER_DB_PATH`).
+- [x] Create writer DB bootstrap service (`getWriterDb`) separate from reader DB.
+- [x] Wire writer schema initialization from `src/backend/db/writer.schema.sql`.
 
 ## Milestone 1 — Document Core
-- [ ] Implement `POST /api/writer/documents` (create draft).
-- [ ] Implement `GET /api/writer/documents/:id` (fetch latest document state).
-- [ ] Implement document list endpoint with pagination and status filter.
-- [ ] Add validation rules for title, genre, audience, and target length.
+- [x] Implement `POST /api/writer/documents` (create draft).
+- [x] Implement `GET /api/writer/documents/:id` (fetch latest document state).
+- [x] Implement document list endpoint with pagination and status filter.
+- [x] Add validation rules for title, genre, audience, and target length.
 
 ## Milestone 2 — Revision + Edit Tracking
 - [ ] Implement `POST /api/writer/documents/:id/edits` with operation-level payload validation.
