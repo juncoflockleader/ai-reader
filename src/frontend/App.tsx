@@ -193,10 +193,12 @@ export default function App() {
         </div>
       )}
       <header className="topbar">
-        <div className="brand">
+        <div className="topbar-main">
+          <div className="brand">
           <BookOpen size={22} />
           <span>StudyReader</span>
         </div>
+          <div className="topbar-actions">
         <label className="icon-button" title="Upload file">
           <Upload size={18} />
           <input
@@ -219,6 +221,9 @@ export default function App() {
         <button className="icon-button" onClick={() => setBooksOpen(true)} title="Manage books">
           <Library size={18} />
         </button>
+          </div>
+        </div>
+        <div id="app-topbar-tools" className="topbar-tools" />
       </header>
 
       {error && <div className="error-banner">{error}</div>}
