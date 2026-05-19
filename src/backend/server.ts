@@ -11,6 +11,7 @@ import settingsRouter from "./routes/settings";
 import writerRouter from "./routes/writer";
 import { ensureDataDirs } from "./services/storage/files";
 import { getDb } from "./services/storage/db";
+import { getAppDb } from "./services/storage/appDb";
 import { getWriterDb } from "./services/writer/db";
 import { getBasicAuthCredentials, host, isProduction, isPublicExposure, port, validateDeploymentConfig, type BasicAuthCredentials } from "./config";
 import {
@@ -28,6 +29,7 @@ const frontendIndex = path.join(frontendDir, "index.html");
 validateDeploymentConfig();
 ensureDataDirs();
 getDb();
+getAppDb();
 getWriterDb();
 
 const basicAuthCredentials = getBasicAuthCredentials();
