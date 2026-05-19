@@ -13,10 +13,10 @@
 - [x] Add validation rules for title, genre, audience, and target length.
 
 ## Milestone 2 — Revision + Edit Tracking
-- [ ] Implement `POST /api/writer/documents/:id/edits` with operation-level payload validation.
-- [ ] Persist revision snapshots and increment `revision_number` atomically.
-- [ ] Maintain `documents.latest_revision_id` pointer.
-- [ ] Build block reindexing pipeline after edits.
+- [x] Implement `POST /api/writer/documents/:id/edits` with operation-level payload validation.
+- [x] Persist revision snapshots and increment `revision_number` atomically.
+- [x] Maintain `documents.latest_revision_id` pointer.
+- [x] Build block reindexing pipeline after edits.
 
 ## Milestone 3 — Context Update Engine
 - [ ] Add `POST /api/writer/documents/:id/context/update` endpoint.

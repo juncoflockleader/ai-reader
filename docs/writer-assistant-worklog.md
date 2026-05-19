@@ -12,11 +12,16 @@
   - edit/revision tracking
   - incremental context updates
   - assistant suggestion lifecycle.
+- Completed Milestone 2 backend edit/revision flow:
+  - `POST /api/writer/documents/:id/edits` accepts validated insert/delete/replace operations.
+  - Edit submission writes a single revision snapshot, audit edit rows, document latest pointer, and rebuilt document blocks inside one transaction.
+  - `GET /api/writer/documents/:id` now returns ordered `blocks` with the latest revision state.
 
 ### Decisions
 - Keep Reader and Writer storage isolated at the database level.
 - Use revision-oriented context assembly rather than page/chunk retrieval semantics.
 - Start with coach-first assistant mode, then expand to coauthor/curriculum.
+- Require edit requests to include `base_revision_id`; use `null` only for the first edit against an empty document.
 
 ### Open Questions
 - Should Writer conversations/messages remain in writer DB only, or support optional shared account-level chat history later?
@@ -24,10 +29,10 @@
 - What is the max accepted edit payload size before forcing chunked edit submission?
 
 ### Next Steps
-1. Implement writer DB bootstrap and config plumbing.
-2. Add `/api/writer/documents` create/fetch endpoints.
-3. Add `/api/writer/documents/:id/edits` with atomic revision increment.
-4. Add first-pass `/context/update` artifact generation.
+1. Add first-pass `/api/writer/documents/:id/context/update` artifact generation.
+2. Implement changed-span detection and impacted-block identification from edit rows.
+3. Add context staleness checks for edit count and elapsed time.
+4. Start frontend Writer app entry and editor panel once context artifacts have a stable response shape.
 
 ### Risks / Notes
 - Revision growth could become expensive without pruning or periodic compaction.
