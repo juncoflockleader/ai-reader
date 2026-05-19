@@ -2,7 +2,7 @@ import fs from "node:fs";
 import multer from "multer";
 import { Router } from "express";
 import { uploadMaxBytes, uploadMaxMb } from "../config";
-import { analyzeStoredBook, ingestPdf } from "../services/ingestion/ingestPdf";
+import { analyzeStoredBook, ingestMarkdown, ingestPdf } from "../services/ingestion/ingestPdf";
 import { getDb, nowIso, parseJson } from "../services/storage/db";
 import { getBookDir, getBookPdfPath, tmpDir } from "../services/storage/files";
 
@@ -11,11 +11,11 @@ const upload = multer({
   dest: tmpDir,
   limits: { fileSize: uploadMaxBytes },
   fileFilter: (_req, file, cb) => {
-    if (file.originalname.toLowerCase().endsWith(".pdf")) {
+    if (file.originalname.toLowerCase().endsWith(".pdf") || file.originalname.toLowerCase().endsWith(".md")) {
       cb(null, true);
       return;
     }
-    cb(new Error("Only PDF uploads are supported."));
+    cb(new Error("Only PDF or Markdown uploads are supported."));
   }
 }).single("pdf");
 
@@ -39,12 +39,15 @@ router.post("/", (req, res, next) => {
         res.status(400).json({ error: "Upload a PDF file." });
         return;
       }
-      if (!hasPdfHeader(req.file.path)) {
+      const isMarkdown = req.file.originalname.toLowerCase().endsWith(".md");
+      if (!isMarkdown && !hasPdfHeader(req.file.path)) {
         fs.rmSync(req.file.path, { force: true });
-        res.status(400).json({ error: "Only PDF uploads are supported." });
+        res.status(400).json({ error: "Only PDF or Markdown uploads are supported." });
         return;
       }
-      const result = await ingestPdf(req.file.path, req.file.originalname);
+      const result = isMarkdown
+        ? await ingestMarkdown(req.file.path, req.file.originalname)
+        : await ingestPdf(req.file.path, req.file.originalname);
       res.json(result);
     } catch (error) {
       next(error);
