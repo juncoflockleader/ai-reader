@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Keyboard, Ruler, Search, Settings2, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Keyboard, Ruler, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -605,9 +605,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <ZoomIn size={16} />
           </button>
         </div>
-        <button className={settingsOpen ? "tool-button active" : "tool-button"} onClick={() => setSettingsOpen((open) => !open)} title="Reader settings">
-          <Settings2 size={16} />
-        </button>
         <button className={commandPaletteOpen ? "tool-button active" : "tool-button"} onClick={() => setCommandPaletteOpen((open) => !open)} title="Command palette (Ctrl/Cmd+K)">
           <Keyboard size={16} />
         </button>

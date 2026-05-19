@@ -50,7 +50,7 @@ button:disabled {
   min-height: 66px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   padding: 8px 14px;
 }
@@ -59,18 +59,25 @@ button:disabled {
   display: inline-flex;
   gap: 10px;
   align-items: center;
+  margin-left: auto;
+  border: 1px solid #c4d0d6;
+  border-radius: 10px;
+  padding: 6px 8px;
 }
 
 .topbar-tools {
   min-width: 0;
   flex: 1;
+  border: 1px solid #c4d0d6;
+  border-radius: 10px;
+  padding: 2px 6px;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 148px;
+  min-width: 112px;
 }
 
 .brand-book {
@@ -687,7 +694,7 @@ button:disabled {
 .bookmark-hover-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-height: 24px;
   gap: 6px;
 }
@@ -772,7 +779,7 @@ button:disabled {
 .assistant-header {
   min-height: 76px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
   padding: 15px 16px;
@@ -1082,7 +1089,7 @@ button:disabled {
 .context-drawer summary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 9px 10px;
   cursor: pointer;
 }
@@ -1113,7 +1120,7 @@ button:disabled {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 10px;
   min-width: 0;
@@ -1130,7 +1137,7 @@ button:disabled {
   padding: 8px 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   color: #46625a;
   font-size: 12px;
   font-weight: 700;
@@ -1150,7 +1157,7 @@ button:disabled {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 7px;
   padding: 3px;
   border: 1px solid #dce5e3;
@@ -1342,7 +1349,7 @@ button:disabled {
 
 .modal-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   align-items: flex-start;
   margin-bottom: 16px;
@@ -1530,7 +1537,7 @@ button:disabled {
 .note-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
 }
 
