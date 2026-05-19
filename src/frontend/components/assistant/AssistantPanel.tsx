@@ -231,9 +231,11 @@ export default function AssistantPanel({
   const providerLabel = currentModelChoice.provider === "openai" ? "OpenAI" : "Claude";
   const contextStatus = chatMode === "no_context_fast"
     ? "No context"
-    : contextScope === "document" || contextScope === "selection"
-      ? "Book context"
-      : "Page context";
+    : contextScope === "selection"
+      ? "Selection context"
+      : contextScope === "page"
+        ? "Page context"
+        : "Book context";
 
   return (
     <aside className="assistant-panel">
