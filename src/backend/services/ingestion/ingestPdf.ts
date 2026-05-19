@@ -4,7 +4,7 @@ import path from "node:path";
 import { chunkPages } from "./chunkText";
 import { extractPagesFromPdf } from "./extractPages";
 import { getDb, id, json, nowIso } from "../storage/db";
-import { getBookDir, getBookPdfPath, safeFileName } from "../storage/files";
+import { getBookDir, getBookMarkdownPath, getBookPdfPath, safeFileName } from "../storage/files";
 
 export async function ingestPdf(tempPath: string, originalName: string) {
   const db = getDb();
@@ -30,6 +30,60 @@ export async function ingestPdf(tempPath: string, originalName: string) {
     fs.rmSync(tempPath, { force: true });
   }
 
+  return { book_id: bookId, status: "ready" };
+}
+
+export async function ingestMarkdown(tempPath: string, originalName: string) {
+  const db = getDb();
+  const bookId = id("book");
+  const createdAt = nowIso();
+  const fileHash = `sha256:${hashFile(tempPath)}`;
+  const fileName = safeFileName(originalName);
+  const bookDir = getBookDir(bookId);
+  fs.mkdirSync(bookDir, { recursive: true });
+  const markdownPath = getBookMarkdownPath(bookId);
+  fs.copyFileSync(tempPath, markdownPath);
+  const source = fs.readFileSync(markdownPath, "utf8");
+
+  const cleanText = source.trim();
+  const pages = [{
+    bookId,
+    pageIndex: 0,
+    pdfPageNumber: 1,
+    rawText: source,
+    cleanText,
+    blocks: [{ block_id: "p1_b001", text: cleanText, bbox: [], type: "markdown" }]
+  }];
+  const chunks = chunkPages(bookId, pages);
+
+  db.prepare(
+    `INSERT INTO books (id, title, author, file_name, file_hash, page_count, ingestion_status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(bookId, titleFromFile(fileName), null, fileName, fileHash, 1, "ready", createdAt, createdAt);
+
+  const insertPage = db.prepare(
+    `INSERT INTO pages (id, book_id, page_index, pdf_page_number, printed_page_label, raw_text, clean_text, blocks_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insertChunk = db.prepare(
+    `INSERT INTO chunks (id, book_id, page_start, page_end, section_id, heading, chunk_type, text, summary, source_blocks_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insertFts = db.prepare(`INSERT INTO chunks_fts (chunk_id, book_id, heading, text, summary) VALUES (?, ?, ?, ?, ?)`);
+  db.exec("BEGIN");
+  try {
+    insertPage.run(`page_${bookId}_1`, bookId, 0, 1, null, source, cleanText, json(pages[0].blocks));
+    for (const chunk of chunks) {
+      insertChunk.run(chunk.id, bookId, chunk.pageStart, chunk.pageEnd, null, chunk.heading, chunk.chunkType, chunk.text, null, json(chunk.sourceBlocks), chunk.createdAt);
+      insertFts.run(chunk.id, bookId, chunk.heading, chunk.text, null);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  } finally {
+    fs.rmSync(tempPath, { force: true });
+  }
   return { book_id: bookId, status: "ready" };
 }
 

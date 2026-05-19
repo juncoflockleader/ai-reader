@@ -23,6 +23,10 @@ export function getBookPdfPath(bookId: string) {
   return path.join(getBookDir(bookId), "original.pdf");
 }
 
+export function getBookMarkdownPath(bookId: string) {
+  return path.join(getBookDir(bookId), "original.md");
+}
+
 export function safeFileName(fileName: string) {
   return path.basename(fileName).replace(/[^\w.\- ()]/g, "_");
 }

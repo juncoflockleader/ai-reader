@@ -2,6 +2,7 @@ import { BookOpen, Library, PanelRightOpen, Settings, StickyNote, Upload, X } fr
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
+import MarkdownPanel from "./components/pdf/MarkdownPanel";
 import AssistantPanel from "./components/assistant/AssistantPanel";
 import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
@@ -18,6 +19,10 @@ function clampLeftPanePercent(percent: number, workspaceWidth: number) {
     : 80;
   const safeMax = Math.max(45, Math.min(80, maxByWidth));
   return Math.min(safeMax, Math.max(45, percent));
+}
+
+function isMarkdownBook(book: Book | null) {
+  return Boolean(book?.file_name.toLowerCase().endsWith(".md"));
 }
 export default function App() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -144,8 +149,36 @@ export default function App() {
     }
   }
 
+  const [startOpen, setStartOpen] = useState(true);
+
   return (
     <div className="app-shell">
+      {startOpen && (
+        <section className="start-screen" aria-label="App chooser">
+          <div className="start-hero">
+            <p className="start-eyebrow">Welcome</p>
+            <h1>AI-Powered Learning</h1>
+            <p className="start-subtitle">Designed for self-driven learners.</p>
+          </div>
+          <div className="start-grid">
+            <button className="start-app-card primary" onClick={() => setStartOpen(false)}>
+              <span className="start-app-title">AI Reader</span>
+              <span className="start-app-copy">Read PDFs and Markdown files with searchable context and AI assistance.</span>
+              <span className="start-app-cta">Open app</span>
+            </button>
+            <article className="start-app-card muted" aria-disabled="true">
+              <span className="start-app-title">Research Workspace</span>
+              <span className="start-app-copy">Plan ideas, collect references, and draft long-form notes.</span>
+              <span className="start-app-cta">Coming soon</span>
+            </article>
+            <article className="start-app-card muted" aria-disabled="true">
+              <span className="start-app-title">Practice Studio</span>
+              <span className="start-app-copy">Turn reading into active recall with quizzes and review loops.</span>
+              <span className="start-app-cta">Coming soon</span>
+            </article>
+          </div>
+        </section>
+      )}
       <header className="topbar">
         <div className="brand">
           <BookOpen size={22} />
@@ -167,11 +200,11 @@ export default function App() {
             </button>
           ))}
         </div>
-        <label className="icon-button" title="Upload PDF">
+        <label className="icon-button" title="Upload file">
           <Upload size={18} />
           <input
             type="file"
-            accept="application/pdf"
+            accept="application/pdf,.md,text/markdown"
             disabled={uploading}
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -199,22 +232,32 @@ export default function App() {
           style={!isCompactLayout ? ({ ["--left-pane-width" as string]: `${leftPaneWidthPercent}%` } as CSSProperties) : undefined}
           ref={workspaceRef}
         >
-          <PdfPanel
-            key={`pdf-${activeBook.id}-${pdfDataVersion}`}
-            book={activeBook}
-            currentPage={currentPage}
-            onPageChange={updateCurrentPage}
-            selectedText={selectedText}
-            onSelectedText={setSelectedText}
-            onDraftQuestion={(text) => setDraftQuestion({ id: Date.now(), text })}
-            onScreenshot={(attachment) => {
-              setPendingAttachments((current) => [...current, attachment]);
-              setDraftQuestion({
-                id: Date.now(),
-                text: "Explain the attached screenshot from the PDF. Focus on the selected area and connect it to the surrounding page context."
-              });
-            }}
-          />
+          {isMarkdownBook(activeBook) ? (
+            <MarkdownPanel
+              book={activeBook}
+              currentPage={currentPage}
+              onPageChange={updateCurrentPage}
+              selectedText={selectedText}
+              onSelectedText={setSelectedText}
+            />
+          ) : (
+            <PdfPanel
+              key={`pdf-${activeBook.id}-${pdfDataVersion}`}
+              book={activeBook}
+              currentPage={currentPage}
+              onPageChange={updateCurrentPage}
+              selectedText={selectedText}
+              onSelectedText={setSelectedText}
+              onDraftQuestion={(text) => setDraftQuestion({ id: Date.now(), text })}
+              onScreenshot={(attachment) => {
+                setPendingAttachments((current) => [...current, attachment]);
+                setDraftQuestion({
+                  id: Date.now(),
+                  text: "Explain the attached screenshot from the PDF. Focus on the selected area and connect it to the surrounding page context."
+                });
+              }}
+            />
+          )}
           {!isCompactLayout && (
             <div
               className="pane-splitter"
@@ -258,12 +301,12 @@ export default function App() {
       ) : (
         <main className="empty-state">
           <BookOpen size={42} />
-          <h1>Open a PDF textbook</h1>
-          <p>Upload a local PDF to extract page text, build searchable chunks, and start reading with cited AI help.</p>
+          <h1>Open a book</h1>
+          <p>Upload a local PDF or Markdown file to extract text, build searchable chunks, and start reading with cited AI help.</p>
           <label className="primary-button">
             <Upload size={18} />
-            {uploading ? "Processing..." : "Upload PDF"}
-            <input type="file" accept="application/pdf" onChange={(event) => event.target.files?.[0] && void uploadPdf(event.target.files[0])} />
+            {uploading ? "Processing..." : "Upload file"}
+            <input type="file" accept="application/pdf,.md,text/markdown" onChange={(event) => event.target.files?.[0] && void uploadPdf(event.target.files[0])} />
           </label>
         </main>
       )}
