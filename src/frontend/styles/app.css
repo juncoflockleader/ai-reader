@@ -43,7 +43,7 @@ button:disabled {
   height: 58px;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: auto 1fr auto auto auto;
   gap: 10px;
   align-items: center;
   padding: 0 14px;
@@ -198,6 +198,23 @@ button:disabled {
   color: #59686d;
   font-size: 13px;
   text-align: center;
+}
+
+
+.panel-book-meta {
+  min-width: 0;
+  display: grid;
+  line-height: 1.1;
+  margin-right: 6px;
+}
+
+.panel-book-meta strong {
+  min-width: 0;
+  color: #23444f;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .page-stepper {

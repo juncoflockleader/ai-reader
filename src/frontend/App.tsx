@@ -197,16 +197,6 @@ export default function App() {
           <BookOpen size={22} />
           <span>StudyReader</span>
         </div>
-        <div className="topbar-book-meta">
-          {activeBook ? (
-            <>
-              <span className="topbar-book-label">Reading</span>
-              <strong title={activeBook.file_name}>{activeBook.title ?? activeBook.file_name}</strong>
-            </>
-          ) : (
-            <span className="topbar-book-label">No book selected</span>
-          )}
-        </div>
         <label className="icon-button" title="Upload file">
           <Upload size={18} />
           <input
