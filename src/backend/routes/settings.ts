@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { getDb, nowIso } from "../services/storage/db";
+import { nowIso } from "../services/storage/db";
+import { getAppDb } from "../services/storage/appDb";
 import { getProvider, getProviderModels, normalizeModel } from "../services/llm";
 
 const router = Router();
@@ -33,7 +34,7 @@ const defaults: AppSettings = {
 };
 
 export function getSetting<T>(key: string, fallback: T): T {
-  const row = getDb().prepare("SELECT value_json FROM settings WHERE key = ?").get(key) as { value_json: string } | undefined;
+  const row = getAppDb().prepare("SELECT value_json FROM settings WHERE key = ?").get(key) as { value_json: string } | undefined;
   if (!row) return fallback;
   try {
     return JSON.parse(row.value_json) as T;
@@ -43,7 +44,7 @@ export function getSetting<T>(key: string, fallback: T): T {
 }
 
 export function setSetting(key: string, value: unknown) {
-  getDb()
+  getAppDb()
     .prepare(
       `INSERT INTO settings (key, value_json, updated_at)
        VALUES (?, ?, ?)
@@ -125,7 +126,7 @@ router.post("/llm/test", async (req, res, next) => {
 
 router.delete("/llm/:provider/key", (req, res) => {
   const provider = req.params.provider;
-  getDb().prepare("DELETE FROM settings WHERE key = ?").run(`llm.${provider}.apiKey`);
+  getAppDb().prepare("DELETE FROM settings WHERE key = ?").run(`llm.${provider}.apiKey`);
   const settings = getAppSettings();
   if (provider === "openai" || provider === "anthropic") {
     settings.providers[provider].hasKey = false;

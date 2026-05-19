@@ -81,11 +81,6 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value_json TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
 
 CREATE INDEX IF NOT EXISTS idx_pages_book_page ON pages(book_id, pdf_page_number);
 CREATE INDEX IF NOT EXISTS idx_chunks_book_page ON chunks(book_id, page_start, page_end);
