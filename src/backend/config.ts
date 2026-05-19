@@ -7,6 +7,7 @@ export const host = configuredHost || "127.0.0.1";
 export const port = parsePort(process.env.PORT, 3127);
 export const uploadMaxMb = parsePositiveNumber(process.env.STUDYREADER_UPLOAD_MAX_MB, 512);
 export const uploadMaxBytes = Math.floor(uploadMaxMb * 1024 * 1024);
+export const writerDbPath = process.env.STUDYWRITER_DB_PATH?.trim() || "writer.db";
 
 export type BasicAuthCredentials = {
   user: string;

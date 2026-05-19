@@ -8,8 +8,10 @@ import booksRouter from "./routes/books";
 import chatRouter from "./routes/chat";
 import highlightsRouter from "./routes/highlights";
 import settingsRouter from "./routes/settings";
+import writerRouter from "./routes/writer";
 import { ensureDataDirs } from "./services/storage/files";
 import { getDb } from "./services/storage/db";
+import { getWriterDb } from "./services/writer/db";
 import { getBasicAuthCredentials, host, isProduction, isPublicExposure, port, validateDeploymentConfig, type BasicAuthCredentials } from "./config";
 import {
   createOriginCheckMiddleware,
@@ -26,6 +28,7 @@ const frontendIndex = path.join(frontendDir, "index.html");
 validateDeploymentConfig();
 ensureDataDirs();
 getDb();
+getWriterDb();
 
 const basicAuthCredentials = getBasicAuthCredentials();
 if (isPublicExposure) app.set("trust proxy", "loopback");
@@ -44,6 +47,7 @@ app.use("/api/books", booksRouter);
 app.use("/api", highlightsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/writer", writerRouter);
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "API route not found." });
 });
