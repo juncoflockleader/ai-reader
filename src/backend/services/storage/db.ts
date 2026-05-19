@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { dataDir, ensureDataDirs } from "./files";
+import { booksDir, dataDir, ensureDataDirs, safeFileName } from "./files";
 
 const schemaPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -19,13 +19,65 @@ export function getDb() {
   ensureDataDirs();
 
   const readerDbPath = path.join(dataDir, "reader.db");
+  const hadReaderDb = fs.existsSync(readerDbPath);
   const legacyDbPath = path.join(dataDir, "app.db");
 
   db = new DatabaseSync(readerDbPath);
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(fs.readFileSync(schemaPath, "utf8"));
   migrateReaderDataFromLegacyAppDb(db, legacyDbPath);
+  rebuildMinimalBookIndexIfNeeded(db, { hadReaderDb });
   return db;
+}
+
+function rebuildMinimalBookIndexIfNeeded(readerDb: DatabaseSync, options: { hadReaderDb: boolean }) {
+  if (options.hadReaderDb) return;
+
+  const hasAnyBooks = (readerDb.prepare("SELECT 1 FROM books LIMIT 1").get() as unknown) !== undefined;
+  if (hasAnyBooks || !fs.existsSync(booksDir)) return;
+
+  const discoveredBooks = fs
+    .readdirSync(booksDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const bookId = entry.name;
+      const bookPath = path.join(booksDir, bookId);
+      const pdfPath = path.join(bookPath, "original.pdf");
+      const markdownPath = path.join(bookPath, "original.md");
+      const filePath = fs.existsSync(pdfPath) ? pdfPath : fs.existsSync(markdownPath) ? markdownPath : null;
+      if (!filePath) return null;
+
+      const fileName = safeFileName(path.basename(filePath));
+      return {
+        bookId,
+        title: path.basename(fileName, path.extname(fileName)).replace(/[_-]+/g, " "),
+        fileName,
+        fileHash: `sha256:${hashFile(filePath)}`
+      };
+    })
+    .filter((book): book is { bookId: string; title: string; fileName: string; fileHash: string } => Boolean(book));
+
+  if (discoveredBooks.length === 0) return;
+
+  const createdAt = nowIso();
+  const insertBook = readerDb.prepare(
+    `INSERT OR IGNORE INTO books (id, title, author, file_name, file_hash, page_count, ingestion_status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  readerDb.exec("BEGIN");
+  try {
+    for (const book of discoveredBooks) {
+      insertBook.run(book.bookId, book.title, null, book.fileName, book.fileHash, 0, "ready", createdAt, createdAt);
+    }
+    readerDb.exec("COMMIT");
+  } catch {
+    readerDb.exec("ROLLBACK");
+    throw new Error("Failed rebuilding minimal reader book index");
+  }
+}
+
+function hashFile(filePath: string) {
+  return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
 function migrateReaderDataFromLegacyAppDb(readerDb: DatabaseSync, legacyDbPath: string) {
