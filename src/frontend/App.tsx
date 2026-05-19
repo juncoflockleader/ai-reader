@@ -7,7 +7,6 @@ import AssistantPanel from "./components/assistant/AssistantPanel";
 import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
 import NotesManager from "./components/notes/NotesManager";
-import { studyReaderBookDataUri } from "./assets/studyReaderBookBase64";
 
 
 const ASSISTANT_MIN_WIDTH_PX = 360;
@@ -196,7 +195,6 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-main">
           <div className="brand">
-            <img src={studyReaderBookDataUri} alt="" className="brand-book" />
             <span className="brand-wordmark" aria-label="Study Reader">
               <strong>Study</strong>
               <em>Reader</em>
