@@ -42,18 +42,17 @@ button:disabled {
 .topbar {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
   border-bottom: 1px solid #d5dbdf;
-  background: linear-gradient(90deg, #f5f8f7 0%, #fbfcfc 45%, #f4f8f8 100%);
+  background: linear-gradient(115deg, #d7efe7 0%, #f2f8fc 42%, #e8f0fb 72%, #dcecf1 100%);
 }
 
 .topbar-main {
-  min-height: 58px;
+  min-height: 66px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 14px;
+  padding: 8px 14px;
 }
 
 .topbar-actions {
@@ -63,17 +62,46 @@ button:disabled {
 }
 
 .topbar-tools {
-  min-height: 54px;
-  border-top: 1px solid #d5dbdf;
+  min-width: 0;
+  flex: 1;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 760;
-  color: #24424d;
-  white-space: nowrap;
+  min-width: 148px;
+}
+
+.brand-book {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-wordmark {
+  display: grid;
+  line-height: 0.88;
+  color: #1e4652;
+}
+
+.brand-wordmark strong,
+.brand-wordmark em {
+  font-style: normal;
+  font-weight: 780;
+  letter-spacing: 0.01em;
+}
+
+.brand-wordmark strong {
+  font-size: 15px;
+}
+
+.brand-wordmark em {
+  margin-top: -3px;
+  margin-left: 10px;
+  font-size: 14px;
+  color: #2d6c7b;
 }
 
 .topbar-book-meta {
@@ -149,7 +177,11 @@ button:disabled {
 
 .app-topbar-toolbar {
   border-bottom: 0;
-  padding: 8px 14px;
+  height: auto;
+  min-height: 50px;
+  padding: 0;
+  background: transparent;
+  border: 0;
 }
 
 .panel-toolbar {
