@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   Check,
   Clock3,
   FilePlus2,
@@ -14,6 +15,7 @@ import {
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ApiError,
   api,
   type WriterBlock,
   type WriterContextArtifact,
@@ -77,6 +79,12 @@ type NewDocumentDraft = {
   targetLength: string;
 };
 
+type WriterFailureState = {
+  kind: "context-stale" | "conflict" | "invalid-range" | "error";
+  title: string;
+  message: string;
+};
+
 export default function WriterWorkspace() {
   const [documents, setDocuments] = useState<WriterDocument[]>([]);
   const [activeDocument, setActiveDocument] = useState<WriterDocument | null>(null);
@@ -96,6 +104,7 @@ export default function WriterWorkspace() {
   const [saving, setSaving] = useState(false);
   const [assistantBusy, setAssistantBusy] = useState(false);
   const [error, setError] = useState("");
+  const [failureState, setFailureState] = useState<WriterFailureState | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -114,6 +123,7 @@ export default function WriterWorkspace() {
   const selectedRevision = revisions.find((revision) => revision.id === selectedRevisionId) ?? revisions[0] ?? null;
   const pendingSuggestions = suggestions.filter((suggestion) => suggestion.status === "pending");
   const latestContextSummary = useMemo(() => summarizeContextArtifacts(contextArtifacts), [contextArtifacts]);
+  const contextIsStale = isContextStale(contextArtifacts, latestRevision?.id ?? null);
 
   async function refreshDocuments(selectDocumentId?: string | null) {
     const result = await api<DocumentListResponse>("/api/writer/documents?page_size=100");
@@ -125,7 +135,7 @@ export default function WriterWorkspace() {
   }
 
   async function loadDocument(documentId: string) {
-    setError("");
+    clearErrorState();
     setBusy(true);
     try {
       const result = await api<DocumentResponse>(`/api/writer/documents/${documentId}`);
@@ -136,7 +146,7 @@ export default function WriterWorkspace() {
         result.latest_revision ? refreshContextForDocument(documentId, false) : Promise.resolve()
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load document.");
+      showWriterError(err, "Could not load document.");
     } finally {
       setBusy(false);
     }
@@ -158,7 +168,7 @@ export default function WriterWorkspace() {
   async function createDocument() {
     const title = newDocument.title.trim();
     if (!title || busy) return;
-    setError("");
+    clearErrorState();
     setBusy(true);
     try {
       const created = await api<{ document: WriterDocument }>("/api/writer/documents", {
@@ -175,19 +185,19 @@ export default function WriterWorkspace() {
       setConversationId(null);
       await refreshDocuments(created.document.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create document.");
+      showWriterError(err, "Could not create document.");
     } finally {
       setBusy(false);
     }
   }
 
   async function saveDraft() {
-    setError("");
+    clearErrorState();
     setSaving(true);
     try {
       await persistDraftIfNeeded();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save draft.");
+      showWriterError(err, "Could not save draft.");
     } finally {
       setSaving(false);
     }
@@ -212,12 +222,12 @@ export default function WriterWorkspace() {
 
   async function refreshContext(force = false) {
     if (!activeDocument || !latestRevision) return;
-    setError("");
+    clearErrorState();
     setBusy(true);
     try {
       await refreshContextForDocument(activeDocument.id, force);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not refresh writer context.");
+      showWriterError(err, "Could not refresh writer context.");
     } finally {
       setBusy(false);
     }
@@ -239,7 +249,7 @@ export default function WriterWorkspace() {
   async function askCoach() {
     const prompt = assistantPrompt.trim();
     if (!activeDocument || !prompt || assistantBusy) return;
-    setError("");
+    clearErrorState();
     setAssistantBusy(true);
     setAssistantMessages((current) => [...current, { role: "user", content: prompt }]);
     try {
@@ -263,7 +273,7 @@ export default function WriterWorkspace() {
       ]);
       await refreshSuggestions(result.document.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Writer coach failed.");
+      showWriterError(err, "Writer coach failed.");
     } finally {
       setAssistantBusy(false);
     }
@@ -271,7 +281,7 @@ export default function WriterWorkspace() {
 
   async function applySuggestion(suggestion: WriterSuggestion) {
     if (!activeDocument || !latestRevision) return;
-    setError("");
+    clearErrorState();
     setBusy(true);
     try {
       const result = await api<ApplySuggestionResponse>(`/api/writer/documents/${activeDocument.id}/suggestions/${suggestion.id}/apply`, {
@@ -284,7 +294,7 @@ export default function WriterWorkspace() {
       applyDocumentState(result);
       await Promise.all([refreshDocuments(result.document.id), refreshRevisions(result.document.id), refreshSuggestions(result.document.id)]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not apply suggestion.");
+      showWriterError(err, "Could not apply suggestion.");
       await refreshSuggestions();
     } finally {
       setBusy(false);
@@ -293,7 +303,7 @@ export default function WriterWorkspace() {
 
   async function rejectSuggestion(suggestion: WriterSuggestion) {
     if (!activeDocument) return;
-    setError("");
+    clearErrorState();
     setBusy(true);
     try {
       await api(`/api/writer/documents/${activeDocument.id}/suggestions/${suggestion.id}/reject`, {
@@ -302,7 +312,7 @@ export default function WriterWorkspace() {
       });
       await refreshSuggestions(activeDocument.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reject suggestion.");
+      showWriterError(err, "Could not reject suggestion.");
     } finally {
       setBusy(false);
     }
@@ -314,6 +324,17 @@ export default function WriterWorkspace() {
     setBlocks(result.blocks);
     setDraftText(result.latest_revision?.full_text ?? "");
     setSelectedRevisionId(result.latest_revision?.id ?? null);
+  }
+
+  function clearErrorState() {
+    setError("");
+    setFailureState(null);
+  }
+
+  function showWriterError(err: unknown, fallbackMessage: string) {
+    const failure = classifyWriterFailure(err, fallbackMessage);
+    setFailureState(failure);
+    setError(failure.message);
   }
 
   const toolbar = (
@@ -407,7 +428,24 @@ export default function WriterWorkspace() {
                 <span>{pendingSuggestions.length} pending</span>
               </div>
             </div>
-            {error && <div className="inline-error">{error}</div>}
+            {failureState ? (
+              <div className={`writer-failure-state ${failureState.kind}`}>
+                <AlertTriangle size={18} />
+                <div>
+                  <strong>{failureState.title}</strong>
+                  <span>{failureState.message}</span>
+                </div>
+                {(failureState.kind === "conflict" || failureState.kind === "context-stale") && (
+                  <button onClick={() => activeDocument && void loadDocument(activeDocument.id)}>Refresh</button>
+                )}
+                {failureState.kind === "invalid-range" && <button onClick={() => editorRef.current?.focus()}>Edit</button>}
+                <button className="writer-icon-button" onClick={clearErrorState} title="Dismiss">
+                  <X size={15} />
+                </button>
+              </div>
+            ) : error ? (
+              <div className="inline-error">{error}</div>
+            ) : null}
             <textarea
               ref={editorRef}
               className="writer-editor"
@@ -550,6 +588,13 @@ export default function WriterWorkspace() {
               </span>
             ))}
           </div>
+          {contextIsStale && (
+            <div className="writer-context-status stale">
+              <AlertTriangle size={15} />
+              <span>Context is behind the current revision.</span>
+              <button onClick={() => void refreshContext(true)} disabled={!latestRevision || busy}>Refresh</button>
+            </div>
+          )}
         </section>
       </aside>
     </section>
@@ -603,6 +648,55 @@ function summarizeContextArtifacts(artifacts: WriterContextArtifact[]) {
     { label: "Thesis", value: `${thesisConfidence}%` },
     { label: "Changed", value: impactedBlocks }
   ];
+}
+
+function isContextStale(artifacts: WriterContextArtifact[], latestRevisionId: string | null) {
+  if (!latestRevisionId || artifacts.length === 0) return false;
+  return artifacts.some((artifact) => {
+    if (artifact.source_revision_id !== latestRevisionId) return true;
+    return isRecord(artifact.staleness) && artifact.staleness.stale === true;
+  });
+}
+
+function classifyWriterFailure(err: unknown, fallbackMessage: string): WriterFailureState {
+  const message = err instanceof Error ? err.message : fallbackMessage;
+  const status = err instanceof ApiError ? err.status : null;
+  const normalized = message.toLowerCase();
+
+  if (status === 409 && normalized.includes("base_revision_id")) {
+    return {
+      kind: "conflict",
+      title: "Revision conflict",
+      message: "This draft changed since the editor loaded. Refresh the document, review the latest revision, then try again."
+    };
+  }
+
+  if (
+    status === 409 &&
+    (normalized.includes("target no longer matches") ||
+      normalized.includes("suggestion is already") ||
+      normalized.includes("latest revision"))
+  ) {
+    return {
+      kind: "context-stale",
+      title: "Suggestion is stale",
+      message: "This suggestion was made against older context. Refresh the draft or ask the coach for a fresh pass."
+    };
+  }
+
+  if (status === 400 && (normalized.includes("range") || normalized.includes("operations["))) {
+    return {
+      kind: "invalid-range",
+      title: "Invalid edit range",
+      message: "The edit could not be mapped to the current draft. Check the highlighted text and save again."
+    };
+  }
+
+  return {
+    kind: "error",
+    title: "Writer action failed",
+    message
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

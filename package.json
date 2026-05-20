@@ -10,6 +10,7 @@
     "serve": "NODE_ENV=production NODE_OPTIONS=--no-warnings=ExperimentalWarning tsx src/backend/server.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "test:writer": "NODE_OPTIONS=--no-warnings=ExperimentalWarning node scripts/writer-integration-tests.mjs",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

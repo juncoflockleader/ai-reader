@@ -131,12 +131,31 @@ export type WriterContextArtifact = {
   staleness: unknown;
 };
 
+export class ApiError extends Error {
+  status: number;
+  payload: unknown;
+
+  constructor(message: string, status: number, payload: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...options,
     headers: options?.body instanceof FormData ? options.headers : { "Content-Type": "application/json", ...options?.headers }
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error ?? "Request failed.");
+  if (!response.ok) {
+    const message = isRecord(data) && typeof data.error === "string" ? data.error : "Request failed.";
+    throw new ApiError(message, response.status, data);
+  }
   return data as T;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

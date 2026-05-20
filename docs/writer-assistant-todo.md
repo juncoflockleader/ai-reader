@@ -37,10 +37,10 @@
 - [x] Add revision timeline view (latest 10 revisions).
 
 ## Milestone 6 — Quality + Observability
-- [ ] Add integration tests for document/revision/edit/suggestion endpoints.
-- [ ] Add schema migration sanity test for writer DB startup.
-- [ ] Add logging for context assembly latency and token payload size.
-- [ ] Add failure-mode UX states (context stale, conflict, invalid range edits).
+- [x] Add integration tests for document/revision/edit/suggestion endpoints.
+- [x] Add schema migration sanity test for writer DB startup.
+- [x] Add logging for context assembly latency and token payload size.
+- [x] Add failure-mode UX states (context stale, conflict, invalid range edits).
 
 ## Backlog
 - [ ] Rubric-based scoring by writing genre.

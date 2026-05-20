@@ -1582,6 +1582,55 @@ button:disabled {
   white-space: nowrap;
 }
 
+.writer-failure-state {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 22px 0;
+  padding: 10px 12px;
+  border: 1px solid #dfc37a;
+  border-left: 4px solid #b9782f;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #684412;
+}
+
+.writer-failure-state.invalid-range,
+.writer-failure-state.error {
+  border-color: #e2b7a8;
+  border-left-color: #b5482f;
+  background: #fff1ed;
+  color: #74321f;
+}
+
+.writer-failure-state div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.writer-failure-state strong,
+.writer-failure-state span {
+  min-width: 0;
+}
+
+.writer-failure-state span {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.writer-failure-state > button:not(.writer-icon-button) {
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: #fff;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 760;
+}
+
 .writer-editor {
   flex: 1;
   resize: none;
@@ -1861,6 +1910,28 @@ button:disabled {
 .writer-context-grid small {
   color: #697b80;
   font-size: 12px;
+}
+
+.writer-context-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #dfc37a;
+  border-radius: 7px;
+  background: #fff8e8;
+  color: #6e4813;
+  font-size: 12px;
+}
+
+.writer-context-status button {
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #fff;
+  color: #6e4813;
+  font-weight: 760;
 }
 
 .primary-button {

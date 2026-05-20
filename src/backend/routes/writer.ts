@@ -226,6 +226,7 @@ type CoachResult = {
   };
 };
 
+type ContextArtifactResponse = ReturnType<typeof formatContextArtifact>;
 type HttpError = Error & { status: number };
 
 writerRouter.post("/documents", (req, res) => {
@@ -364,6 +365,7 @@ writerRouter.post("/documents/:id/edits", (req, res, next) => {
 
 writerRouter.post("/documents/:id/assist", async (req, res, next) => {
   try {
+    const contextStartedAtMs = Date.now();
     const request = normalizeAssistRequest(req.body);
     const db = getWriterDb();
     const computedAt = nowIso();
@@ -424,6 +426,16 @@ writerRouter.post("/documents/:id/assist", async (req, res, next) => {
       }
       throw error;
     }
+
+    logContextAssemblyMetrics({
+      phase: "assist",
+      documentId: document.id,
+      revisionId: latestRevision.id,
+      startedAtMs: contextStartedAtMs,
+      artifacts: contextUpdate.artifacts,
+      generatedArtifactTypes: contextUpdate.generatedArtifactTypes,
+      reusedArtifactTypes: contextUpdate.reusedArtifactTypes
+    });
 
     const coachResult = await generateCoachResult({
       request,
@@ -506,6 +518,7 @@ writerRouter.post("/documents/:id/assist", async (req, res, next) => {
 
 writerRouter.post("/documents/:id/context/update", (req, res, next) => {
   try {
+    const contextStartedAtMs = Date.now();
     const request = normalizeContextUpdateRequest(req.body);
     const db = getWriterDb();
     const computedAt = nowIso();
@@ -528,6 +541,16 @@ writerRouter.post("/documents/:id/context/update", (req, res, next) => {
       const contextUpdate = updateContextArtifacts(db, { document, latestRevision, request, computedAt });
       db.exec("COMMIT");
       transactionOpen = false;
+
+      logContextAssemblyMetrics({
+        phase: "context_update",
+        documentId: document.id,
+        revisionId: contextUpdate.latestRevision.id,
+        startedAtMs: contextStartedAtMs,
+        artifacts: contextUpdate.artifacts,
+        generatedArtifactTypes: contextUpdate.generatedArtifactTypes,
+        reusedArtifactTypes: contextUpdate.reusedArtifactTypes
+      });
 
       res.status(201).json({
         document,
@@ -931,6 +954,44 @@ function updateContextArtifacts(
     reusedArtifactTypes,
     buildState
   };
+}
+
+function logContextAssemblyMetrics(input: {
+  phase: "assist" | "context_update";
+  documentId: string;
+  revisionId: string;
+  startedAtMs: number;
+  artifacts: ContextArtifactResponse[];
+  generatedArtifactTypes: WriterContextArtifactType[];
+  reusedArtifactTypes: WriterContextArtifactType[];
+}) {
+  const payloadSample = input.artifacts.map((artifact) => ({
+    artifact_type: artifact.artifact_type,
+    payload: artifact.payload
+  }));
+  const payloadJson = json(payloadSample);
+  const payloadBytes = Buffer.byteLength(payloadJson, "utf8");
+
+  console.info(
+    "[writer-context]",
+    json({
+      event: "context_assembly",
+      phase: input.phase,
+      document_id: input.documentId,
+      revision_id: input.revisionId,
+      artifact_count: input.artifacts.length,
+      generated_artifact_types: input.generatedArtifactTypes,
+      reused_artifact_types: input.reusedArtifactTypes,
+      latency_ms: Date.now() - input.startedAtMs,
+      payload_bytes: payloadBytes,
+      approx_payload_tokens: estimateTokenCount(payloadJson)
+    })
+  );
+}
+
+function estimateTokenCount(text: string) {
+  if (!text) return 0;
+  return Math.ceil(text.length / 4);
 }
 
 function normalizeContextUpdateRequest(value: unknown): ContextUpdateRequest {
