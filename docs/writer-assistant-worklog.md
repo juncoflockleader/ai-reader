@@ -16,12 +16,26 @@
   - `POST /api/writer/documents/:id/edits` accepts validated insert/delete/replace operations.
   - Edit submission writes a single revision snapshot, audit edit rows, document latest pointer, and rebuilt document blocks inside one transaction.
   - `GET /api/writer/documents/:id` now returns ordered `blocks` with the latest revision state.
+- Completed Milestone 3 context update flow:
+  - Added `writer_context_artifacts` storage for revision-sourced artifacts with edit-count and age staleness policy fields.
+  - Added `POST /api/writer/documents/:id/context/update` for `recent_changes`, `document_outline`, and `thesis_state`.
+  - Context updates detect revision-level changed spans, identify impacted current blocks, reuse fresh artifacts, and support forced regeneration.
+- Completed Milestone 4 assistant and suggestion flow:
+  - Added `POST /api/writer/documents/:id/assist` in coach mode with generated context artifacts, persisted writer conversations/messages, configured LLM support, and a local heuristic fallback when no API key is available.
+  - Assistant responses can persist pending suggestions with exact document ranges and replacement text.
+  - Added apply/reject suggestion lifecycle endpoints; apply creates a guarded revision edit, reject records resolution metadata.
+- Completed Milestone 5 frontend MVP:
+  - Added a Writer entry to the start screen and a persistent Reader/Writer app switch in the top bar.
+  - Added a Writer workspace with document creation/listing, editor save-to-revision flow, context refresh, and document metrics.
+  - Added coach UI, pending suggestion apply/reject actions, and a latest-10 revision timeline with preview.
 
 ### Decisions
 - Keep Reader and Writer storage isolated at the database level.
 - Use revision-oriented context assembly rather than page/chunk retrieval semantics.
 - Start with coach-first assistant mode, then expand to coauthor/curriculum.
 - Require edit requests to include `base_revision_id`; use `null` only for the first edit against an empty document.
+- Keep first-pass context generation deterministic and local; LLM-backed refinement can layer on later without changing artifact storage.
+- Coach assist should stay useful without network/API keys by falling back to deterministic local coaching, while using configured LLM providers when keys are present.
 
 ### Open Questions
 - Should Writer conversations/messages remain in writer DB only, or support optional shared account-level chat history later?
@@ -29,10 +43,10 @@
 - What is the max accepted edit payload size before forcing chunked edit submission?
 
 ### Next Steps
-1. Add first-pass `/api/writer/documents/:id/context/update` artifact generation.
-2. Implement changed-span detection and impacted-block identification from edit rows.
-3. Add context staleness checks for edit count and elapsed time.
-4. Start frontend Writer app entry and editor panel once context artifacts have a stable response shape.
+1. Add integration tests for document, edit, context, assist, and suggestion endpoints.
+2. Add schema migration sanity test for writer DB startup.
+3. Add structured logging for context assembly latency and token payload size.
+4. Add failure-mode UX states for stale context, conflicts, and invalid range edits.
 
 ### Risks / Notes
 - Revision growth could become expensive without pruning or periodic compaction.

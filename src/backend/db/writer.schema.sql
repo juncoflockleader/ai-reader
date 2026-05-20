@@ -61,6 +61,19 @@ CREATE TABLE IF NOT EXISTS document_edits (
   FOREIGN KEY(block_id) REFERENCES document_blocks(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS writer_context_artifacts (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  artifact_type TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  source_revision_id TEXT NOT NULL,
+  computed_at TEXT NOT NULL,
+  stale_after_edit_count INTEGER NOT NULL,
+  stale_after_seconds INTEGER NOT NULL,
+  FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  FOREIGN KEY(source_revision_id) REFERENCES document_revisions(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS writing_goals (
   id TEXT PRIMARY KEY,
   document_id TEXT NOT NULL,
@@ -125,6 +138,7 @@ CREATE TABLE IF NOT EXISTS suggestions (
 CREATE INDEX IF NOT EXISTS idx_document_blocks_doc ON document_blocks(document_id, block_index);
 CREATE INDEX IF NOT EXISTS idx_document_revisions_doc ON document_revisions(document_id, revision_number DESC);
 CREATE INDEX IF NOT EXISTS idx_document_edits_doc ON document_edits(document_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_writer_context_artifacts_doc_type ON writer_context_artifacts(document_id, artifact_type, computed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_doc ON conversations(document_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_suggestions_doc_status ON suggestions(document_id, status, created_at);

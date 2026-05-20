@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Brain, Library, PanelRightOpen, Settings, Sparkles, StickyNote, Upload, X } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, Library, PanelRightOpen, PenLine, Settings, Sparkles, StickyNote, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
@@ -7,6 +7,7 @@ import AssistantPanel from "./components/assistant/AssistantPanel";
 import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
 import NotesManager from "./components/notes/NotesManager";
+import WriterWorkspace from "./components/writer/WriterWorkspace";
 
 
 const ASSISTANT_MIN_WIDTH_PX = 360;
@@ -25,6 +26,11 @@ function isMarkdownBook(book: Book | null) {
   return Boolean(book?.file_name.toLowerCase().endsWith(".md"));
 }
 export default function App() {
+  const [activeApp, setActiveApp] = useState<"reader" | "writer">(() => {
+    const saved = localStorage.getItem("studysuite:activeApp");
+    return saved === "writer" ? "writer" : "reader";
+  });
+  const [startOpen, setStartOpen] = useState(() => localStorage.getItem("studysuite:startDismissed") !== "1");
   const [books, setBooks] = useState<Book[]>([]);
   const [activeBook, setActiveBook] = useState<Book | null>(null);
   const [currentPage, setCurrentPage] = useState(() => {
@@ -149,7 +155,17 @@ export default function App() {
     }
   }
 
-  const [startOpen, setStartOpen] = useState(true);
+  function chooseApp(app: "reader" | "writer") {
+    setActiveApp(app);
+    setStartOpen(false);
+    localStorage.setItem("studysuite:activeApp", app);
+    localStorage.setItem("studysuite:startDismissed", "1");
+  }
+
+  function switchApp(app: "reader" | "writer") {
+    setActiveApp(app);
+    localStorage.setItem("studysuite:activeApp", app);
+  }
 
   return (
     <div className="app-shell">
@@ -162,7 +178,7 @@ export default function App() {
             <p className="start-description">Pick your workspace to begin focused reading, deeper understanding, and better retention.</p>
 
             <div className="start-grid">
-              <button className="start-choice start-choice-primary" onClick={() => setStartOpen(false)}>
+              <button className="start-choice start-choice-primary" onClick={() => chooseApp("reader")}>
                 <span className="start-choice-icon"><BookOpen size={18} /></span>
                 <span className="start-choice-content">
                   <strong>AI Reader</strong>
@@ -171,20 +187,20 @@ export default function App() {
                 <ArrowRight size={16} />
               </button>
 
-              <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
-                <span className="start-choice-icon"><Sparkles size={18} /></span>
+              <button className="start-choice start-choice-primary" onClick={() => chooseApp("writer")}>
+                <span className="start-choice-icon"><PenLine size={18} /></span>
                 <span className="start-choice-content">
-                  <strong>Practice Coach</strong>
-                  <small>Personalized drills and spaced repetition to reinforce what you learn.</small>
+                  <strong>AI Writer</strong>
+                  <small>Draft, revise, track context, and turn coaching into applied suggestions.</small>
                 </span>
-                <span className="start-pill">Coming soon</span>
-              </article>
+                <ArrowRight size={16} />
+              </button>
 
               <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
                 <span className="start-choice-icon"><Brain size={18} /></span>
                 <span className="start-choice-content">
-                  <strong>Concept Mapper</strong>
-                  <small>Turn chapters into connected ideas so complex topics feel easier.</small>
+                  <strong>Practice Coach</strong>
+                  <small>Personalized drills and spaced repetition to reinforce what you learn.</small>
                 </span>
                 <span className="start-pill">Coming soon</span>
               </article>
@@ -197,41 +213,55 @@ export default function App() {
           <div className="brand">
             <span className="brand-wordmark" aria-label="Study Reader">
               <strong>Study</strong>
-              <em>Reader</em>
+              <em>{activeApp === "writer" ? "Writer" : "Reader"}</em>
             </span>
+          </div>
+          <div className="app-switcher" aria-label="App switcher">
+            <button className={activeApp === "reader" ? "active" : ""} onClick={() => switchApp("reader")} title="AI Reader">
+              <BookOpen size={16} />
+            </button>
+            <button className={activeApp === "writer" ? "active" : ""} onClick={() => switchApp("writer")} title="AI Writer">
+              <PenLine size={16} />
+            </button>
           </div>
           <div id="app-topbar-tools" className="topbar-tools" />
           <div id="app-topbar-assistant" className="topbar-assistant" />
           <div className="topbar-actions">
-        <label className="icon-button" title="Upload file">
-          <Upload size={18} />
-          <input
-            type="file"
-            accept="application/pdf,.md,text/markdown"
-            disabled={uploading}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void uploadPdf(file);
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-        <button className="icon-button" onClick={() => activeBook && setNotesOpen(true)} disabled={!activeBook} title="Notes">
-          <StickyNote size={18} />
-        </button>
-        <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings">
-          <Settings size={18} />
-        </button>
-        <button className="icon-button" onClick={() => setBooksOpen(true)} title="Manage books">
-          <Library size={18} />
-        </button>
+            {activeApp === "reader" && (
+              <>
+                <label className="icon-button" title="Upload file">
+                  <Upload size={18} />
+                  <input
+                    type="file"
+                    accept="application/pdf,.md,text/markdown"
+                    disabled={uploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadPdf(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <button className="icon-button" onClick={() => activeBook && setNotesOpen(true)} disabled={!activeBook} title="Notes">
+                  <StickyNote size={18} />
+                </button>
+                <button className="icon-button" onClick={() => setBooksOpen(true)} title="Manage books">
+                  <Library size={18} />
+                </button>
+              </>
+            )}
+            <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings">
+              <Settings size={18} />
+            </button>
           </div>
         </div>
       </header>
 
       {error && <div className="error-banner">{error}</div>}
 
-      {activeBook ? (
+      {activeApp === "writer" ? (
+        <WriterWorkspace />
+      ) : activeBook ? (
         <main
           className={isCompactLayout ? "workspace compact" : "workspace"}
           style={!isCompactLayout ? ({ ["--left-pane-width" as string]: `${leftPaneWidthPercent}%` } as CSSProperties) : undefined}
