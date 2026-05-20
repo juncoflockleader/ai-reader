@@ -6,6 +6,7 @@ import {
   FileText,
   History,
   ListTree,
+  MessageCircleMore,
   MessageSquareText,
   RefreshCw,
   Save,
@@ -100,6 +101,7 @@ export default function WriterWorkspace() {
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [coachMode, setCoachMode] = useState<"auto" | "local">("auto");
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [assistantBusy, setAssistantBusy] = useState(false);
@@ -124,6 +126,7 @@ export default function WriterWorkspace() {
   const pendingSuggestions = suggestions.filter((suggestion) => suggestion.status === "pending");
   const latestContextSummary = useMemo(() => summarizeContextArtifacts(contextArtifacts), [contextArtifacts]);
   const contextIsStale = isContextStale(contextArtifacts, latestRevision?.id ?? null);
+  const activeSuggestions = useMemo(() => suggestions.filter((suggestion) => suggestion.status === "pending"), [suggestions]);
 
   async function refreshDocuments(selectDocumentId?: string | null) {
     const result = await api<DocumentListResponse>("/api/writer/documents?page_size=100");
@@ -352,8 +355,33 @@ export default function WriterWorkspace() {
       <button className="tool-button" onClick={() => void refreshContext(true)} disabled={!latestRevision || busy} title="Refresh writer context">
         <RefreshCw size={16} />
       </button>
+      <button
+        className={`tool-button ${showSuggestions ? "active" : ""}`}
+        onClick={() => setShowSuggestions((current) => !current)}
+        disabled={!activeDocument}
+        title={showSuggestions ? "Hide suggestions" : "Show suggestions"}
+      >
+        <ListTree size={16} />
+      </button>
+      <label className="writer-revision-select">
+        <History size={14} />
+        <select value={selectedRevisionId ?? ""} onChange={(event) => setSelectedRevisionId(event.target.value)} disabled={revisions.length === 0}>
+          {revisions.length === 0 && <option value="">No revisions</option>}
+          {revisions.map((revision) => (
+            <option key={revision.id} value={revision.id}>
+              rev {revision.revision_number} · {formatDate(revision.created_at)}
+            </option>
+          ))}
+        </select>
+      </label>
       <span className="writer-topbar-stat">{wordTotal} words</span>
       {latestRevision && <span className="writer-topbar-stat">rev {latestRevision.revision_number}</span>}
+      {latestContextSummary.map((item) => (
+        <span key={item.label} className="writer-topbar-stat">
+          {item.label}: {item.value}
+        </span>
+      ))}
+      {contextIsStale && <span className="writer-topbar-stat writer-topbar-warning">Context stale</span>}
       {hasUnsavedChanges && <span className="writer-unsaved">Unsaved</span>}
     </div>
   );
@@ -454,6 +482,39 @@ export default function WriterWorkspace() {
               spellCheck
               placeholder="Start drafting here..."
             />
+            {showSuggestions && (
+              <section className="writer-inline-suggestions">
+                <div className="writer-inline-suggestions-title">
+                  <MessageCircleMore size={16} />
+                  <strong>Inline AI suggestions</strong>
+                </div>
+                {activeSuggestions.length === 0 && <p className="writer-muted">No pending suggestions for this draft.</p>}
+                {activeSuggestions.map((suggestion) => (
+                  <article key={suggestion.id} className="writer-inline-suggestion">
+                    <header>
+                      <MessageCircleMore size={14} />
+                      <span>{suggestion.suggestion_type}</span>
+                      <small>
+                        chars {suggestion.target_start}-{suggestion.target_end}
+                      </small>
+                    </header>
+                    <p className="writer-inline-original">{suggestion.original_text || "Remove text"}</p>
+                    {suggestion.suggested_text && <p className="writer-inline-replacement">{suggestion.suggested_text}</p>}
+                    {suggestion.explanation && <small>{suggestion.explanation}</small>}
+                    <div className="writer-suggestion-actions">
+                      <button onClick={() => void applySuggestion(suggestion)} disabled={!latestRevision || busy} title="Apply suggestion">
+                        <Check size={14} />
+                        Apply
+                      </button>
+                      <button onClick={() => void rejectSuggestion(suggestion)} disabled={busy} title="Reject suggestion">
+                        <X size={14} />
+                        Reject
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
           </>
         ) : (
           <div className="writer-empty-state">
@@ -507,93 +568,17 @@ export default function WriterWorkspace() {
 
         <section className="writer-panel">
           <div className="writer-panel-title">
-            <ListTree size={17} />
-            <strong>Suggestions</strong>
-            <button className="writer-icon-button" onClick={() => void refreshSuggestions()} disabled={!activeDocument || busy} title="Refresh suggestions">
-              <RefreshCw size={15} />
-            </button>
-          </div>
-          <div className="writer-suggestion-list">
-            {suggestions.length === 0 && <p className="writer-muted">No suggestions yet.</p>}
-            {suggestions.map((suggestion) => (
-              <article key={suggestion.id} className={`writer-suggestion ${suggestion.status}`}>
-                <div className="writer-suggestion-header">
-                  <span>{suggestion.suggestion_type}</span>
-                  <small>{suggestion.status}</small>
-                </div>
-                <p><del>{suggestion.original_text || "Remove text"}</del></p>
-                {suggestion.suggested_text && <p><ins>{suggestion.suggested_text}</ins></p>}
-                {suggestion.explanation && <small>{suggestion.explanation}</small>}
-                {suggestion.status === "pending" && (
-                  <div className="writer-suggestion-actions">
-                    <button onClick={() => void applySuggestion(suggestion)} disabled={!latestRevision || busy} title="Apply suggestion">
-                      <Check size={14} />
-                      Apply
-                    </button>
-                    <button onClick={() => void rejectSuggestion(suggestion)} disabled={busy} title="Reject suggestion">
-                      <X size={14} />
-                      Reject
-                    </button>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="writer-panel">
-          <div className="writer-panel-title">
             <History size={17} />
-            <strong>Revisions</strong>
-            <button className="writer-icon-button" onClick={() => void refreshRevisions()} disabled={!activeDocument || busy} title="Refresh revisions">
-              <RefreshCw size={15} />
-            </button>
+            <strong>Revision preview</strong>
           </div>
-          <div className="writer-revision-list">
-            {revisions.map((revision) => (
-              <button
-                key={revision.id}
-                className={selectedRevision?.id === revision.id ? "writer-revision-item active" : "writer-revision-item"}
-                onClick={() => setSelectedRevisionId(revision.id)}
-              >
-                <Clock3 size={14} />
-                <span>rev {revision.revision_number}</span>
-                <small>{formatDate(revision.created_at)}</small>
-              </button>
-            ))}
-            {revisions.length === 0 && <p className="writer-muted">Saved revisions will appear here.</p>}
-          </div>
-          {selectedRevision && (
+          {selectedRevision ? (
             <div className="writer-revision-preview">
               <strong>rev {selectedRevision.revision_number}</strong>
               <span>{selectedRevision.change_summary || "No summary"}</span>
               <pre>{selectedRevision.full_text.slice(0, 900)}</pre>
             </div>
-          )}
-        </section>
-
-        <section className="writer-panel writer-context-panel">
-          <div className="writer-panel-title">
-            <Sparkles size={17} />
-            <strong>Context</strong>
-            <button className="writer-icon-button" onClick={() => void refreshContext(false)} disabled={!latestRevision || busy} title="Refresh context">
-              <RefreshCw size={15} />
-            </button>
-          </div>
-          <div className="writer-context-grid">
-            {latestContextSummary.map((item) => (
-              <span key={item.label}>
-                <strong>{item.value}</strong>
-                <small>{item.label}</small>
-              </span>
-            ))}
-          </div>
-          {contextIsStale && (
-            <div className="writer-context-status stale">
-              <AlertTriangle size={15} />
-              <span>Context is behind the current revision.</span>
-              <button onClick={() => void refreshContext(true)} disabled={!latestRevision || busy}>Refresh</button>
-            </div>
+          ) : (
+            <p className="writer-muted">Choose a revision from the top bar.</p>
           )}
         </section>
       </aside>

@@ -1402,6 +1402,10 @@ button:disabled {
 .writer-topbar-toolbar {
   gap: 8px;
 }
+.writer-topbar-toolbar .tool-button.active {
+  background: #2d675b;
+  color: #fff;
+}
 
 .writer-topbar-stat,
 .writer-unsaved {
@@ -1415,6 +1419,31 @@ button:disabled {
   color: #53666d;
   font-size: 12px;
   white-space: nowrap;
+}
+.writer-topbar-warning {
+  border-color: #e6c17e;
+  background: #fff8e6;
+  color: #795214;
+}
+
+.writer-revision-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #cbd6d7;
+  border-radius: 7px;
+  background: #fff;
+  color: #53666d;
+}
+
+.writer-revision-select select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  outline: 0;
 }
 
 .writer-unsaved {
@@ -1667,7 +1696,7 @@ button:disabled {
 
 .writer-inspector {
   display: grid;
-  grid-template-rows: minmax(260px, 1fr) minmax(180px, auto) minmax(180px, auto) auto;
+  grid-template-rows: minmax(260px, 1fr) minmax(180px, auto);
   gap: 10px;
   overflow: auto;
   padding: 12px;
@@ -1845,6 +1874,55 @@ button:disabled {
 .writer-suggestion-actions button:last-child {
   background: #f7e7e1;
   color: #854029;
+}
+
+.writer-inline-suggestions {
+  border-top: 1px solid #d8e0df;
+  padding: 14px 22px;
+  display: grid;
+  gap: 10px;
+  background: #fcfdfd;
+}
+
+.writer-inline-suggestions-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #2a434a;
+}
+
+.writer-inline-suggestion {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.writer-inline-suggestion header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #32484f;
+}
+
+.writer-inline-suggestion small {
+  color: #65767b;
+  margin-left: auto;
+}
+
+.writer-inline-original {
+  margin: 0;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #b9782f;
+  text-decoration-thickness: 1.5px;
+}
+
+.writer-inline-replacement {
+  margin: 0;
+  color: #225b4f;
 }
 
 .writer-revision-item {
