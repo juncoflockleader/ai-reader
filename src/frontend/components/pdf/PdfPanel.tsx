@@ -988,7 +988,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onScreenshot={onScreenshot}
               areaCaptureEnabled={areaCaptureEnabled}
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
-              strokes={showScribbles ? (((showGettingStartedOverlay && gettingStartedByPage[pageNumber]?.overlay_strokes?.length) ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? []))) : []}
+              strokes={showScribbles ? (drawingsByPage[pageNumber] ?? []) : []}
+              overlayStrokes={showGettingStartedOverlay ? (gettingStartedByPage[pageNumber]?.overlay_strokes ?? []) : []}
               drawEnabled={scribbleEnabled}
               drawColor={scribbleColor}
               eraseMode={scribbleEraser}
@@ -1124,7 +1125,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
             <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
             </button>
-          </div>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
           <button
             className="getting-started-resize-handle"
