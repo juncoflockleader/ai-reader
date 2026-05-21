@@ -656,16 +656,60 @@ button:disabled {
 
 .getting-started-modal {
   gap: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .getting-started-modal p {
   margin: 0;
   color: #3d5258;
 }
+.getting-started-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+.getting-started-modal-header {
+  cursor: move;
+  user-select: none;
+}
+.getting-started-resize-handle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  border-radius: 3px;
+  background: repeating-linear-gradient(135deg, #9bb0b7, #9bb0b7 2px, transparent 2px, transparent 4px);
+}
 
 .getting-started-modal .inline-error {
   margin: 0;
   border-radius: 6px;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: rgba(24, 32, 37, 0.4);
+}
+.tool-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid #cbd6d7;
+  border-radius: 10px;
+  background: #f8fbfa;
+}
+.scribble-color input {
+  width: 30px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .spin {
