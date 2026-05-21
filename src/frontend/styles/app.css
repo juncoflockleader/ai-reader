@@ -694,9 +694,32 @@ button:disabled {
 .getting-started-header h4 {
   margin: 0;
 }
-.getting-started-header span {
-  font-size: 12px;
-  color: #5a6c70;
+.getting-started-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.getting-started-header-button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  margin: 0 !important;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #c2d4d9;
+  background: #f3fafb;
+  color: #1f353d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.getting-started-header-button:hover {
+  background: #e7f3f7;
+}
+
+.getting-started-header-button:disabled {
+  opacity: 0.65;
 }
 .getting-started-content {
   flex: 1;
@@ -704,27 +727,6 @@ button:disabled {
   min-height: 120px;
   overflow: auto;
   padding: 8px 8px 0;
-}
-.getting-started-actions {
-  display: flex;
-  gap: 8px;
-  padding: 0 8px;
-  flex: 0 0 40px;
-  min-height: 40px;
-}
-
-.getting-started-actions > button {
-  flex: 1;
-  height: 40px;
-  min-height: 40px;
-  margin: 0;
-  border-radius: 9px;
-  background: #244752;
-  color: #fff;
-}
-
-.getting-started-actions > button:hover {
-  background: #2d5866;
 }
 .getting-started-resize-handle {
   position: absolute;
@@ -749,7 +751,7 @@ button:disabled {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 19;
+  z-index: 1200;
   background: transparent;
 }
 .tool-subgroup {
