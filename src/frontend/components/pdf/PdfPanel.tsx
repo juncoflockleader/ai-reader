@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Brush, Eye, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Brush, Eraser, Eye, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -6,6 +6,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api, type Book, type ChatAttachment, type Highlight } from "../../api";
 import { getAction, listActions } from "../../actions/registry";
+import MarkdownText from "../common/MarkdownText";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
@@ -80,6 +81,33 @@ function persistReaderZoom(bookId: string, zoom: number) {
   }
 }
 
+function normalizeGettingStartedItem(item: GettingStartedItem): GettingStartedItem {
+  const text = item.summary_text?.trim() ?? "";
+  if (!text) return item;
+  const parsed = tryParseMaybeJson(text);
+  if (!parsed) return item;
+  const summary = typeof parsed.summary === "string"
+    ? parsed.summary
+    : (typeof parsed.summary_text === "string" ? parsed.summary_text : item.summary_text);
+  const parsedStrokes = Array.isArray(parsed.overlay_strokes)
+    ? parsed.overlay_strokes
+    : (Array.isArray(parsed.strokes) ? parsed.strokes : item.overlay_strokes);
+  return { summary_text: summary, overlay_strokes: parsedStrokes as Stroke[] };
+}
+
+function tryParseMaybeJson(text: string): Record<string, unknown> | null {
+  const normalized = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  for (const candidate of [normalized, text.trim()]) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    } catch {
+      // Ignore parsing failures and return null below.
+    }
+  }
+  return null;
+}
+
 export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion, onScreenshot }: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<Record<number, PageData>>({});
@@ -93,6 +121,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [rulerTopRatio, setRulerTopRatio] = useState(0.42);
   const [areaCaptureEnabled, setAreaCaptureEnabled] = useState(false);
   const [scribbleEnabled, setScribbleEnabled] = useState(false);
+  const [scribbleEraser, setScribbleEraser] = useState(false);
+  const [scribbleColor, setScribbleColor] = useState("#e74c3c");
   const [showScribbles, setShowScribbles] = useState(true);
   const [drawingsByPage, setDrawingsByPage] = useState<Record<number, Stroke[]>>({});
   const [gettingStartedByPage, setGettingStartedByPage] = useState<Record<number, GettingStartedItem>>({});
@@ -268,7 +298,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       .catch(() => undefined);
     api<{ item: GettingStartedItem | null }>(`/api/books/${book.id}/getting-started/${currentPage}`).then((result) => {
       if (!result.item) return;
-      const item = result.item;
+      const item = normalizeGettingStartedItem(result.item);
       setGettingStartedByPage((current) => ({ ...current, [currentPage]: item }));
     }).catch(() => undefined);
   }, [book.id, currentPage]);
@@ -612,12 +642,37 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         >
           <ImagePlus size={16} />
         </button>
-        <button className={scribbleEnabled ? "tool-button active" : "tool-button"} onClick={() => setScribbleEnabled((v) => !v)} title="Draw scribbles">
-          <Brush size={16} />
-        </button>
-        <button className={showScribbles ? "tool-button active" : "tool-button"} onClick={() => setShowScribbles((v) => !v)} title="Show/hide scribbles">
-          <Eye size={16} />
-        </button>
+        <div className="tool-subgroup" aria-label="Scribble tools">
+          <button className={scribbleEnabled ? "tool-button active" : "tool-button"} onClick={() => setScribbleEnabled((v) => !v)} title="Enable scribbling">
+            <Brush size={16} />
+          </button>
+          <button className={showScribbles ? "tool-button active" : "tool-button"} onClick={() => setShowScribbles((v) => !v)} title="Show/hide scribbles">
+            <Eye size={16} />
+          </button>
+          <button
+            className={scribbleEraser ? "tool-button active" : "tool-button"}
+            onClick={() => {
+              setScribbleEnabled(true);
+              setScribbleEraser((v) => !v);
+            }}
+            title="Erase scribbles"
+          >
+            <Eraser size={16} />
+          </button>
+          <label className="scribble-color" title="Scribble color">
+            <input type="color" value={scribbleColor} onChange={(event) => setScribbleColor(event.target.value)} disabled={scribbleEraser} />
+          </label>
+          <button
+            className="tool-button danger"
+            title="Remove all scribbles on current page"
+            onClick={() => {
+              setDrawingsByPage((current) => ({ ...current, [currentPage]: [] }));
+              void api(`/api/books/${book.id}/drawings/${currentPage}`, { method: "PUT", body: JSON.stringify({ strokes: [], overlay_type: "scribble" }) });
+            }}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
         <button className={showGettingStarted ? "tool-button active" : "tool-button"} onClick={() => setShowGettingStarted((v) => !v)} title="Show getting started">
           <Sparkles size={16} />
         </button>
@@ -810,6 +865,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
               strokes={showScribbles ? (gettingStartedByPage[pageNumber]?.overlay_strokes?.length ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? [])) : []}
               drawEnabled={scribbleEnabled}
+              drawColor={scribbleColor}
+              eraseMode={scribbleEraser}
               onStrokesChange={(strokes) => {
                 setDrawingsByPage((current) => ({ ...current, [pageNumber]: strokes }));
                 void api(`/api/books/${book.id}/drawings/${pageNumber}`, { method: "PUT", body: JSON.stringify({ strokes, overlay_type: "scribble" }) });
@@ -897,9 +954,12 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
       {showGettingStarted && (
-        <div className="selection-menu command-palette getting-started-modal" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }}>
+        <div className="modal-overlay" onClick={() => setShowGettingStarted(false)}>
+        <div className="selection-menu command-palette getting-started-modal" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }} onClick={(event) => event.stopPropagation()}>
           <h4 style={{ margin: "0 0 8px 0" }}>Getting started · page {currentPage}</h4>
-          <p style={{ whiteSpace: "pre-wrap" }}>{gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."}</p>
+          <div className="getting-started-content">
+            <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
+          </div>
           <button disabled={gettingStartedLoading} onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
@@ -914,7 +974,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Getting started timed out after 30 seconds.")), 30_000));
               const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, { method: "POST", body: JSON.stringify({ screenshot_data_url: screenshot, page_text: pageText }) });
               const result = await Promise.race([request, timeout]);
-              setGettingStartedByPage((current) => ({ ...current, [currentPage]: result.item }));
+              setGettingStartedByPage((current) => ({ ...current, [currentPage]: normalizeGettingStartedItem(result.item) }));
             } catch (error) {
               setGettingStartedError(error instanceof Error ? error.message : "Could not generate getting started content.");
             } finally {
@@ -925,6 +985,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
           </button>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
+        </div>
         </div>
       )}
       {commandPaletteOpen && (
@@ -966,6 +1027,8 @@ function ReaderPage({
   loadText,
   strokes,
   drawEnabled,
+  drawColor,
+  eraseMode,
   onStrokesChange
 }: {
   pdf: PDFDocumentProxy | null;
@@ -985,6 +1048,8 @@ function ReaderPage({
   loadText: (page: number) => void;
   strokes: Stroke[];
   drawEnabled: boolean;
+  drawColor: string;
+  eraseMode: boolean;
   onStrokesChange: (strokes: Stroke[]) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1083,7 +1148,14 @@ function ReaderPage({
     if (event.button !== 0 || !surfaceRef.current) return;
     const p = localPoint(event, event.currentTarget);
     const rect = surfaceRef.current.getBoundingClientRect();
-    drawStroke.current = { color: "#e74c3c", width: 4, points: [{ x: p.x / rect.width, y: p.y / rect.height }] };
+    if (eraseMode) {
+      const x = clamp(p.x / rect.width, 0, 1);
+      const y = clamp(p.y / rect.height, 0, 1);
+      const radius = 0.02;
+      onStrokesChange(strokes.filter((stroke) => !stroke.points.some((point) => Math.hypot(point.x - x, point.y - y) <= radius)));
+      return;
+    }
+    drawStroke.current = { color: drawColor, width: 4, points: [{ x: p.x / rect.width, y: p.y / rect.height }] };
   }
   function moveDraw(event: React.PointerEvent<HTMLDivElement>) {
     if (!drawStroke.current || !surfaceRef.current) return;

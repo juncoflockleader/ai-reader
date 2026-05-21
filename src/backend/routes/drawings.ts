@@ -106,8 +106,11 @@ router.post("/books/:bookId/getting-started/:pageNumber", async (req, res, next)
       ]
     }, apiKey);
     const parsed = safeParse(response.content);
-    const summary = typeof parsed.summary === "string" ? parsed.summary : response.content;
-    const overlayStrokes = Array.isArray(parsed.overlay_strokes) ? parsed.overlay_strokes : [];
+    const summaryCandidate = typeof parsed.summary === "string" ? parsed.summary : (typeof parsed.summary_text === "string" ? parsed.summary_text : "");
+    const summary = summaryCandidate || response.content;
+    const overlayStrokes = Array.isArray(parsed.overlay_strokes)
+      ? parsed.overlay_strokes
+      : (Array.isArray(parsed.strokes) ? parsed.strokes : []);
     const now = nowIso();
     const existing = getDb().prepare("SELECT id, created_at FROM getting_started_pages WHERE book_id = ? AND page_number = ?").get(req.params.bookId, pageNumber) as { id: string; created_at: string } | undefined;
     getDb().prepare(`INSERT INTO getting_started_pages (id, book_id, page_number, summary_text, overlay_strokes_json, screenshot_data_url, llm_model, created_at, updated_at)
@@ -143,6 +146,9 @@ function safeParse(text: string): Record<string, unknown> {
     }
   }
 
+  const extractedSummary = extractSummaryField(normalized) ?? extractSummaryField(text);
+  if (extractedSummary) return { summary: extractedSummary };
+
   return {};
 }
 
@@ -165,6 +171,19 @@ function unwrapJsonEnvelope(input: string): string | null {
     return typeof parsed === "string" ? parsed : null;
   } catch {
     return null;
+  }
+}
+
+function extractSummaryField(input: string): string | null {
+  const summaryMatch = input.match(/"summary(?:_text)?"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"overlay_strokes"|"\\n\s*}\s*$|"\s*}\s*$)/i);
+  if (!summaryMatch?.[1]) return null;
+  try {
+    return JSON.parse(`"${summaryMatch[1]}"`) as string;
+  } catch {
+    return summaryMatch[1]
+      .replace(/\\"/g, "\"")
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, "\t");
   }
 }
 
