@@ -639,6 +639,35 @@ button:disabled {
   text-align: left;
 }
 
+.selection-menu h4 {
+  margin: 0;
+  color: #1f353d;
+}
+
+.getting-started-modal {
+  gap: 10px;
+}
+
+.getting-started-modal p {
+  margin: 0;
+  color: #3d5258;
+}
+
+.getting-started-modal .inline-error {
+  margin: 0;
+  border-radius: 6px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .selection-menu button:hover {
   background: #edf4f2;
 }
@@ -849,6 +878,11 @@ button:disabled {
 .command-palette { width: 360px; max-width: calc(100% - 24px); }
 .command-palette button { justify-content: space-between; }
 .command-palette kbd { font-size: 11px; color: #5b6c71; background: #edf4f2; border-radius: 4px; padding: 2px 6px; }
+
+.pdf-page-surface[data-draw-mode="true"] .textLayer {
+  pointer-events: none;
+  user-select: none;
+}
 
 .assistant-panel {
   background: #f8faf8;
