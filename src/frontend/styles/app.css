@@ -728,7 +728,7 @@ button:disabled {
   position: fixed;
   inset: 0;
   z-index: 19;
-  background: rgba(24, 32, 37, 0.4);
+  background: transparent;
 }
 .tool-subgroup {
   display: flex;
