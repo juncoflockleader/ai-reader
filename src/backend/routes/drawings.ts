@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { getProvider, normalizeModel } from "../services/llm";
 import { getDb, id, json, nowIso, parseJson } from "../services/storage/db";
+import { getApiKey, getAppSettings } from "./settings";
 
 const router = Router();
 
@@ -13,9 +15,16 @@ type DrawingOverlayRow = {
 };
 
 router.get("/books/:bookId/drawings", (req, res) => {
+  const fromPage = Number(req.query.from_page ?? 0);
+  const toPage = Number(req.query.to_page ?? 0);
+  const hasRange = Number.isInteger(fromPage) && Number.isInteger(toPage) && fromPage > 0 && toPage >= fromPage;
   const rows = getDb()
-    .prepare("SELECT * FROM drawing_overlays WHERE book_id = ? ORDER BY page_number ASC")
-    .all(req.params.bookId) as DrawingOverlayRow[];
+    .prepare(
+      hasRange
+        ? "SELECT * FROM drawing_overlays WHERE book_id = ? AND page_number BETWEEN ? AND ? ORDER BY page_number ASC"
+        : "SELECT * FROM drawing_overlays WHERE book_id = ? ORDER BY page_number ASC"
+    )
+    .all(...(hasRange ? [req.params.bookId, fromPage, toPage] : [req.params.bookId])) as DrawingOverlayRow[];
 
   res.json({
     drawings: rows.map((row) => ({
@@ -37,21 +46,89 @@ router.put("/books/:bookId/drawings/:pageNumber", (req, res) => {
   }
 
   const strokes = Array.isArray(req.body.strokes) ? req.body.strokes : [];
+  const overlayType = req.body.overlay_type === "getting_started" ? "getting_started" : "scribble";
   const updatedAt = nowIso();
   const existing = getDb()
-    .prepare("SELECT id, created_at FROM drawing_overlays WHERE book_id = ? AND page_number = ?")
-    .get(req.params.bookId, pageNumber) as { id: string; created_at: string } | undefined;
+    .prepare("SELECT id, created_at FROM drawing_overlays WHERE book_id = ? AND page_number = ? AND overlay_type = ?")
+    .get(req.params.bookId, pageNumber, overlayType) as { id: string; created_at: string } | undefined;
 
   getDb()
     .prepare(
-      `INSERT INTO drawing_overlays (id, book_id, page_number, strokes_json, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(book_id, page_number)
-       DO UPDATE SET strokes_json = excluded.strokes_json, updated_at = excluded.updated_at`
+      `INSERT INTO drawing_overlays (id, book_id, page_number, overlay_type, strokes_json, metadata_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(book_id, page_number, overlay_type)
+       DO UPDATE SET strokes_json = excluded.strokes_json, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at`
     )
-    .run(existing?.id ?? id("draw"), req.params.bookId, pageNumber, json(strokes), existing?.created_at ?? updatedAt, updatedAt);
+    .run(
+      existing?.id ?? id("draw"),
+      req.params.bookId,
+      pageNumber,
+      overlayType,
+      json(strokes),
+      req.body.metadata ? json(req.body.metadata) : null,
+      existing?.created_at ?? updatedAt,
+      updatedAt
+    );
 
   res.json({ ok: true });
 });
+
+router.get("/books/:bookId/getting-started/:pageNumber", (req, res) => {
+  const pageNumber = Number(req.params.pageNumber);
+  const row = getDb()
+    .prepare("SELECT * FROM getting_started_pages WHERE book_id = ? AND page_number = ?")
+    .get(req.params.bookId, pageNumber) as
+    | { id: string; summary_text: string; overlay_strokes_json: string; updated_at: string; llm_model: string | null }
+    | undefined;
+  if (!row) return res.json({ item: null });
+  res.json({ item: { id: row.id, summary_text: row.summary_text, overlay_strokes: parseJson(row.overlay_strokes_json, []), updated_at: row.updated_at, llm_model: row.llm_model } });
+});
+
+router.post("/books/:bookId/getting-started/:pageNumber", async (req, res, next) => {
+  try {
+    const pageNumber = Number(req.params.pageNumber);
+    const screenshotDataUrl = typeof req.body.screenshot_data_url === "string" ? req.body.screenshot_data_url : "";
+    const pageText = typeof req.body.page_text === "string" ? req.body.page_text : "";
+    if (!screenshotDataUrl) return res.status(400).json({ error: "screenshot_data_url is required." });
+    const settings = getAppSettings();
+    const providerId = settings.defaultProvider;
+    const model = normalizeModel(providerId, settings.providers[providerId].model);
+    const apiKey = getApiKey(providerId);
+    if (!apiKey) return res.status(400).json({ error: `Missing ${providerId} API key.` });
+    const provider = getProvider(providerId);
+    const response = await provider.chat({
+      model,
+      temperature: 0.2,
+      maxTokens: 700,
+      messages: [
+        { role: "system", content: "You help readers get started on a textbook page. Return JSON with keys summary and overlay_strokes. overlay_strokes is an array of simple strokes [{color,width,points:[{x,y}]}] using normalized coordinates 0..1." },
+        { role: "user", content: `Create a concise getting-started guide for page ${pageNumber}. Explain what to read first and why.\n\nPage text (possibly partial OCR/text layer):\n${pageText.slice(0, 6000)}`, attachments: [{ type: "image", dataUrl: screenshotDataUrl, mimeType: "image/png" }] }
+      ]
+    }, apiKey);
+    const parsed = safeParse(response.content);
+    const summary = typeof parsed.summary === "string" ? parsed.summary : response.content;
+    const overlayStrokes = Array.isArray(parsed.overlay_strokes) ? parsed.overlay_strokes : [];
+    const now = nowIso();
+    const existing = getDb().prepare("SELECT id, created_at FROM getting_started_pages WHERE book_id = ? AND page_number = ?").get(req.params.bookId, pageNumber) as { id: string; created_at: string } | undefined;
+    getDb().prepare(`INSERT INTO getting_started_pages (id, book_id, page_number, summary_text, overlay_strokes_json, screenshot_data_url, llm_model, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(book_id, page_number) DO UPDATE SET summary_text=excluded.summary_text, overlay_strokes_json=excluded.overlay_strokes_json, screenshot_data_url=excluded.screenshot_data_url, llm_model=excluded.llm_model, updated_at=excluded.updated_at`)
+      .run(existing?.id ?? id("gstart"), req.params.bookId, pageNumber, summary, json(overlayStrokes), screenshotDataUrl, `${providerId}:${model}`, existing?.created_at ?? now, now);
+    res.json({ item: { summary_text: summary, overlay_strokes: overlayStrokes } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function safeParse(text: string): Record<string, unknown> {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return {};
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
 
 export default router;

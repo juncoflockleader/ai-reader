@@ -24,6 +24,9 @@ type PageData = {
   clean_text: string;
 };
 
+type Stroke = { color: string; width: number; points: Array<{ x: number; y: number }> };
+type GettingStartedItem = { summary_text: string; overlay_strokes: Stroke[] };
+
 type PdfTextLayer = {
   render: () => Promise<void>;
   cancel: () => void;
@@ -89,6 +92,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [rulerColor, setRulerColor] = useState("#5aa9a3");
   const [rulerTopRatio, setRulerTopRatio] = useState(0.42);
   const [areaCaptureEnabled, setAreaCaptureEnabled] = useState(false);
+  const [scribbleEnabled, setScribbleEnabled] = useState(false);
+  const [showScribbles, setShowScribbles] = useState(true);
+  const [drawingsByPage, setDrawingsByPage] = useState<Record<number, Stroke[]>>({});
+  const [gettingStartedByPage, setGettingStartedByPage] = useState<Record<number, GettingStartedItem>>({});
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
@@ -242,6 +250,26 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       }
     }
   }, [book.id, book.page_count, currentPage, pages]);
+
+  useEffect(() => {
+    const from = Math.max(1, currentPage - 4);
+    const to = currentPage + 4;
+    api<{ drawings: Array<{ page_number: number; strokes: Stroke[]; overlay_type?: string }> }>(`/api/books/${book.id}/drawings?from_page=${from}&to_page=${to}`)
+      .then((result) => {
+        const next: Record<number, Stroke[]> = {};
+        for (const row of result.drawings) {
+          if ((row.overlay_type ?? "scribble") !== "scribble") continue;
+          next[row.page_number] = row.strokes;
+        }
+        setDrawingsByPage((current) => ({ ...current, ...next }));
+      })
+      .catch(() => undefined);
+    api<{ item: GettingStartedItem | null }>(`/api/books/${book.id}/getting-started/${currentPage}`).then((result) => {
+      if (!result.item) return;
+      const item = result.item;
+      setGettingStartedByPage((current) => ({ ...current, [currentPage]: item }));
+    }).catch(() => undefined);
+  }, [book.id, currentPage]);
 
   const visiblePages = useMemo(() => {
     const all = Array.from({ length: book.page_count || 0 }, (_, index) => index + 1);
@@ -582,6 +610,15 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         >
           <ImagePlus size={16} />
         </button>
+        <button className={scribbleEnabled ? "tool-button active" : "tool-button"} onClick={() => setScribbleEnabled((v) => !v)} title="Draw scribbles">
+          <Highlighter size={16} />
+        </button>
+        <button className={showScribbles ? "tool-button active" : "tool-button"} onClick={() => setShowScribbles((v) => !v)} title="Show/hide scribbles">
+          <Highlighter size={16} />
+        </button>
+        <button className={showGettingStarted ? "tool-button active" : "tool-button"} onClick={() => setShowGettingStarted((v) => !v)} title="Show getting started">
+          Getting started
+        </button>
         <button className={rulerEnabled ? "tool-button active" : "tool-button"} onClick={() => setRulerEnabled((enabled) => !enabled)} title="Reading ruler">
           <Ruler size={16} />
         </button>
@@ -769,6 +806,12 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onScreenshot={onScreenshot}
               areaCaptureEnabled={areaCaptureEnabled}
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
+              strokes={showScribbles ? (gettingStartedByPage[pageNumber]?.overlay_strokes?.length ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? [])) : []}
+              drawEnabled={scribbleEnabled}
+              onStrokesChange={(strokes) => {
+                setDrawingsByPage((current) => ({ ...current, [pageNumber]: strokes }));
+                void api(`/api/books/${book.id}/drawings/${pageNumber}`, { method: "PUT", body: JSON.stringify({ strokes, overlay_type: "scribble" }) });
+              }}
               loadText={(page) => {
                 if (!pages[page]) {
                   api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
@@ -851,6 +894,20 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           {inferredHeadings.map((heading) => <button key={`${heading.page}-${heading.text}`} onClick={() => changePage(heading.page)}>p.{heading.page} · {heading.text}</button>)}
         </div>
       )}
+      {showGettingStarted && (
+        <div className="selection-menu command-palette" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }}>
+          <h4 style={{ margin: "0 0 8px 0" }}>Getting started · page {currentPage}</h4>
+          <p style={{ whiteSpace: "pre-wrap" }}>{gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."}</p>
+          <button onClick={async () => {
+            const pageText = pages[currentPage]?.clean_text ?? "";
+            const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
+            if (!pageCanvas) return;
+            const screenshot = pageCanvas.toDataURL("image/png");
+            const result = await api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, { method: "POST", body: JSON.stringify({ screenshot_data_url: screenshot, page_text: pageText }) });
+            setGettingStartedByPage((current) => ({ ...current, [currentPage]: result.item }));
+          }}>Generate / refresh</button>
+        </div>
+      )}
       {commandPaletteOpen && (
         <div className="selection-menu command-palette" style={{ left: "50%", top: "24%", transform: "translateX(-50%)" }}>
           <input value={commandQuery} onChange={(e) => setCommandQuery(e.target.value)} placeholder="Type an action or shortcut" autoFocus />
@@ -887,7 +944,10 @@ function ReaderPage({
   onScreenshot,
   areaCaptureEnabled,
   onAreaCaptureComplete,
-  loadText
+  loadText,
+  strokes,
+  drawEnabled,
+  onStrokesChange
 }: {
   pdf: PDFDocumentProxy | null;
   bookId: string;
@@ -904,6 +964,9 @@ function ReaderPage({
   areaCaptureEnabled: boolean;
   onAreaCaptureComplete: () => void;
   loadText: (page: number) => void;
+  strokes: Stroke[];
+  drawEnabled: boolean;
+  onStrokesChange: (strokes: Stroke[]) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -912,6 +975,7 @@ function ReaderPage({
   const dragStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [fitWidth, setFitWidth] = useState(760);
   const [captureRect, setCaptureRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const drawStroke = useRef<Stroke | null>(null);
   const canvasWidth = Math.round(fitWidth * zoom);
 
   useEffect(() => {
@@ -995,6 +1059,21 @@ function ReaderPage({
     applyHighlightMarks(textLayerRef.current, highlights);
   }, [highlights]);
 
+
+  function startDraw(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || !surfaceRef.current) return;
+    const p = localPoint(event, event.currentTarget);
+    const rect = surfaceRef.current.getBoundingClientRect();
+    drawStroke.current = { color: "#e74c3c", width: 4, points: [{ x: p.x / rect.width, y: p.y / rect.height }] };
+  }
+  function moveDraw(event: React.PointerEvent<HTMLDivElement>) {
+    if (!drawStroke.current || !surfaceRef.current) return;
+    const p = localPoint(event, event.currentTarget);
+    const rect = surfaceRef.current.getBoundingClientRect();
+    drawStroke.current.points.push({ x: clamp(p.x / rect.width, 0, 1), y: clamp(p.y / rect.height, 0, 1) });
+    onStrokesChange([...(strokes ?? []), drawStroke.current]);
+  }
+  function endDraw(_event: React.PointerEvent<HTMLDivElement>) { drawStroke.current = null; }
   function startAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
     if ((!event.ctrlKey && !areaCaptureEnabled) || !canvasRef.current || !surfaceRef.current) return;
     event.preventDefault();
@@ -1036,9 +1115,9 @@ function ReaderPage({
       <div
         className={shouldRender ? "pdf-page-surface" : "pdf-page-surface placeholder"}
         ref={surfaceRef}
-        onPointerDown={startAreaCapture}
-        onPointerMove={updateAreaCapture}
-        onPointerUp={finishAreaCapture}
+        onPointerDown={(event) => { startAreaCapture(event); if (drawEnabled) startDraw(event); }}
+        onPointerMove={(event) => { updateAreaCapture(event); if (drawEnabled) moveDraw(event); }}
+        onPointerUp={(event) => { finishAreaCapture(event); if (drawEnabled) endDraw(event); }}
         onPointerCancel={cancelAreaCapture}
         onMouseUp={onSelect}
         onContextMenu={onContextMenu}
@@ -1048,6 +1127,7 @@ function ReaderPage({
           <>
             <canvas ref={canvasRef} />
             <div className="textLayer" ref={textLayerRef} />
+            <svg className="scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{strokes.map((stroke, idx) => <polyline key={idx} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
             {captureRect && <div className="area-capture-rect" style={captureRect} />}
           </>
         ) : (

@@ -61,6 +61,33 @@ CREATE TABLE IF NOT EXISTS highlights (
   FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS drawing_overlays (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL,
+  page_number INTEGER NOT NULL,
+  overlay_type TEXT NOT NULL DEFAULT 'scribble',
+  strokes_json TEXT NOT NULL,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(book_id, page_number, overlay_type),
+  FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS getting_started_pages (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL,
+  page_number INTEGER NOT NULL,
+  summary_text TEXT NOT NULL,
+  overlay_strokes_json TEXT NOT NULL,
+  screenshot_data_url TEXT,
+  llm_model TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(book_id, page_number),
+  FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
   book_id TEXT NOT NULL,
@@ -85,4 +112,6 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS idx_pages_book_page ON pages(book_id, pdf_page_number);
 CREATE INDEX IF NOT EXISTS idx_chunks_book_page ON chunks(book_id, page_start, page_end);
 CREATE INDEX IF NOT EXISTS idx_highlights_book ON highlights(book_id, page_number);
+CREATE INDEX IF NOT EXISTS idx_drawing_overlays_book ON drawing_overlays(book_id, page_number, overlay_type);
+CREATE INDEX IF NOT EXISTS idx_getting_started_book ON getting_started_pages(book_id, page_number);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
