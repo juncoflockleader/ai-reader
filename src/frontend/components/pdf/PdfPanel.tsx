@@ -6,6 +6,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api, type Book, type ChatAttachment, type Highlight } from "../../api";
 import { getAction, listActions } from "../../actions/registry";
+import MarkdownText from "../common/MarkdownText";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
@@ -929,7 +930,9 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         <div className="modal-overlay" onClick={() => setShowGettingStarted(false)}>
         <div className="selection-menu command-palette getting-started-modal" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }} onClick={(event) => event.stopPropagation()}>
           <h4 style={{ margin: "0 0 8px 0" }}>Getting started · page {currentPage}</h4>
-          <p style={{ whiteSpace: "pre-wrap" }}>{gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."}</p>
+          <div className="getting-started-content">
+            <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
+          </div>
           <button disabled={gettingStartedLoading} onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);

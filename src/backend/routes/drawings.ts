@@ -146,6 +146,9 @@ function safeParse(text: string): Record<string, unknown> {
     }
   }
 
+  const extractedSummary = extractSummaryField(normalized) ?? extractSummaryField(text);
+  if (extractedSummary) return { summary: extractedSummary };
+
   return {};
 }
 
@@ -168,6 +171,19 @@ function unwrapJsonEnvelope(input: string): string | null {
     return typeof parsed === "string" ? parsed : null;
   } catch {
     return null;
+  }
+}
+
+function extractSummaryField(input: string): string | null {
+  const summaryMatch = input.match(/"summary(?:_text)?"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"overlay_strokes"|"\\n\s*}\s*$|"\s*}\s*$)/i);
+  if (!summaryMatch?.[1]) return null;
+  try {
+    return JSON.parse(`"${summaryMatch[1]}"`) as string;
+  } catch {
+    return summaryMatch[1]
+      .replace(/\\"/g, "\"")
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, "\t");
   }
 }
 
