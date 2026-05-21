@@ -988,8 +988,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onScreenshot={onScreenshot}
               areaCaptureEnabled={areaCaptureEnabled}
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
-              strokes={showScribbles ? (drawingsByPage[pageNumber] ?? []) : []}
-              overlayStrokes={showScribbles && showGettingStartedOverlay ? (gettingStartedByPage[pageNumber]?.overlay_strokes ?? []) : []}
+              strokes={showScribbles ? (((showGettingStartedOverlay && gettingStartedByPage[pageNumber]?.overlay_strokes?.length) ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? []))) : []}
               drawEnabled={scribbleEnabled}
               drawColor={scribbleColor}
               eraseMode={scribbleEraser}
@@ -1097,12 +1096,11 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <div className="getting-started-content">
             <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
           </div>
-          <div className="getting-started-actions">
-            <button onClick={() => setShowGettingStartedOverlay((value) => !value)}>
-              <Eye size={15} />
-              <span>{showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}</span>
-            </button>
-            <button disabled={gettingStartedLoading} onClick={async () => {
+          <button onClick={() => setShowGettingStartedOverlay((value) => !value)}>
+            <Eye size={15} />
+            <span>{showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}</span>
+          </button>
+          <button disabled={gettingStartedLoading} onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
             if (!pageCanvas) {
