@@ -1123,7 +1123,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           }}>
             {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
             <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
-          </button>
+            </button>
+          </div>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
           <button
             className="getting-started-resize-handle"
@@ -1179,6 +1180,7 @@ function ReaderPage({
   onAreaCaptureComplete,
   loadText,
   strokes,
+  overlayStrokes,
   drawEnabled,
   drawColor,
   eraseMode,
@@ -1200,6 +1202,7 @@ function ReaderPage({
   onAreaCaptureComplete: () => void;
   loadText: (page: number) => void;
   strokes: Stroke[];
+  overlayStrokes: Stroke[];
   drawEnabled: boolean;
   drawColor: string;
   eraseMode: boolean;
@@ -1386,6 +1389,7 @@ function ReaderPage({
             <canvas ref={canvasRef} />
             <div className="textLayer" ref={textLayerRef} />
             <svg className="scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{strokes.map((stroke, idx) => <polyline key={idx} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
+            <svg className="scribble-layer getting-started-scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{overlayStrokes.map((stroke, idx) => <polyline key={`overlay-${idx}`} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
             {captureRect && <div className="area-capture-rect" style={captureRect} />}
           </>
         ) : (
