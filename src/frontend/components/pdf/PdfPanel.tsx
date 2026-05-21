@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Brush, Eraser, Eye, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Brush, Eraser, Eye, EyeOff, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -1092,16 +1092,23 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             }}
           >
             <h4>Getting started · page {currentPage}</h4>
-            <span>Drag to move</span>
-          </div>
-          <div className="getting-started-content">
-            <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
-          </div>
-          <button onClick={() => setShowGettingStartedOverlay((value) => !value)}>
-            <Eye size={15} />
-            <span>{showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}</span>
-          </button>
-          <button disabled={gettingStartedLoading} onClick={async () => {
+            <div className="getting-started-header-actions">
+              <button
+                type="button"
+                className="getting-started-header-button"
+                onClick={() => setShowGettingStartedOverlay((value) => !value)}
+                title={showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}
+                aria-label={showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}
+              >
+                {showGettingStartedOverlay ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+              <button
+                type="button"
+                className="getting-started-header-button"
+                title={gettingStartedLoading ? "Generating getting started" : "Generate or refresh getting started"}
+                aria-label={gettingStartedLoading ? "Generating getting started" : "Generate or refresh getting started"}
+                disabled={gettingStartedLoading}
+                onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
             if (!pageCanvas) {
@@ -1122,9 +1129,13 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               setGettingStartedLoading(false);
             }
           }}>
-            {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
-            <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
-            </button>
+                {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
+              </button>
+            </div>
+          </div>
+          <div className="getting-started-content">
+            <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
+          </div>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
           <button
             className="getting-started-resize-handle"
