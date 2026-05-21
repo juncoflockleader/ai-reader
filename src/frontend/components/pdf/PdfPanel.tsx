@@ -63,6 +63,10 @@ function readerZoomStorageKey(bookId: string) {
   return `studyreader:reader:zoom:${bookId}`;
 }
 
+function gettingStartedRectStorageKey(bookId: string) {
+  return `studyreader:reader:getting-started:rect:${bookId}`;
+}
+
 function readStoredReaderZoom(bookId: string) {
   try {
     const stored = window.localStorage.getItem(readerZoomStorageKey(bookId));
@@ -127,6 +131,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showScribbles, setShowScribbles] = useState(true);
   const [drawingsByPage, setDrawingsByPage] = useState<Record<number, Stroke[]>>({});
   const [gettingStartedByPage, setGettingStartedByPage] = useState<Record<number, GettingStartedItem>>({});
+  const [showGettingStartedOverlay, setShowGettingStartedOverlay] = useState(true);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
   const [gettingStartedLoading, setGettingStartedLoading] = useState(false);
   const [gettingStartedError, setGettingStartedError] = useState<string | null>(null);
@@ -228,14 +233,32 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   useEffect(() => {
     if (!showGettingStarted) return;
     if (!gettingStartedRectInitialized) {
-      const width = Math.min(620, window.innerWidth - 32);
-      const height = Math.min(560, window.innerHeight - 72);
-      setGettingStartedRect({
-        width,
-        height,
-        left: Math.max(16, (window.innerWidth - width) / 2),
-        top: Math.max(16, (window.innerHeight - height) * 0.2)
-      });
+      const fallbackWidth = Math.min(620, window.innerWidth - 32);
+      const fallbackHeight = Math.min(560, window.innerHeight - 72);
+      const fallback = {
+        width: fallbackWidth,
+        height: fallbackHeight,
+        left: Math.max(16, (window.innerWidth - fallbackWidth) / 2),
+        top: Math.max(16, (window.innerHeight - fallbackHeight) * 0.2)
+      };
+      try {
+        const raw = window.localStorage.getItem(gettingStartedRectStorageKey(book.id));
+        const parsed = raw ? JSON.parse(raw) as Partial<GettingStartedModalRect> : null;
+        if (parsed && [parsed.left, parsed.top, parsed.width, parsed.height].every((value) => typeof value === "number" && Number.isFinite(value))) {
+          const width = clamp(parsed.width!, 360, window.innerWidth - 8);
+          const height = clamp(parsed.height!, 260, window.innerHeight - 8);
+          setGettingStartedRect({
+            width,
+            height,
+            left: clamp(parsed.left!, 8, Math.max(8, window.innerWidth - width - 8)),
+            top: clamp(parsed.top!, 8, Math.max(8, window.innerHeight - height - 8))
+          });
+        } else {
+          setGettingStartedRect(fallback);
+        }
+      } catch {
+        setGettingStartedRect(fallback);
+      }
       setGettingStartedRectInitialized(true);
     }
     const onMouseMove = (event: MouseEvent) => {
@@ -265,7 +288,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [showGettingStarted, gettingStartedRectInitialized]);
+  }, [book.id, showGettingStarted, gettingStartedRectInitialized]);
+
+
+  useEffect(() => {
+    if (!gettingStartedRectInitialized) return;
+    try {
+      window.localStorage.setItem(gettingStartedRectStorageKey(book.id), JSON.stringify(gettingStartedRect));
+    } catch {
+      // Ignore localStorage failures.
+    }
+  }, [book.id, gettingStartedRect, gettingStartedRectInitialized]);
   const seekFromProgressPointer = (clientX: number, element: HTMLElement) => {
     const bounds = element.getBoundingClientRect();
     if (bounds.width <= 0) return;
@@ -955,7 +988,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onScreenshot={onScreenshot}
               areaCaptureEnabled={areaCaptureEnabled}
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
-              strokes={showScribbles ? (gettingStartedByPage[pageNumber]?.overlay_strokes?.length ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? [])) : []}
+              strokes={showScribbles ? (((showGettingStartedOverlay && gettingStartedByPage[pageNumber]?.overlay_strokes?.length) ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? []))) : []}
               drawEnabled={scribbleEnabled}
               drawColor={scribbleColor}
               eraseMode={scribbleEraser}
@@ -1063,6 +1096,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <div className="getting-started-content">
             <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
           </div>
+          <button onClick={() => setShowGettingStartedOverlay((value) => !value)}>
+            <Eye size={15} />
+            <span>{showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}</span>
+          </button>
           <button disabled={gettingStartedLoading} onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
