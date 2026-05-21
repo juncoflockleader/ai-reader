@@ -63,6 +63,10 @@ function readerZoomStorageKey(bookId: string) {
   return `studyreader:reader:zoom:${bookId}`;
 }
 
+function gettingStartedRectStorageKey(bookId: string) {
+  return `studyreader:reader:getting-started:rect:${bookId}`;
+}
+
 function readStoredReaderZoom(bookId: string) {
   try {
     const stored = window.localStorage.getItem(readerZoomStorageKey(bookId));
@@ -127,6 +131,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showScribbles, setShowScribbles] = useState(true);
   const [drawingsByPage, setDrawingsByPage] = useState<Record<number, Stroke[]>>({});
   const [gettingStartedByPage, setGettingStartedByPage] = useState<Record<number, GettingStartedItem>>({});
+  const [showGettingStartedOverlay, setShowGettingStartedOverlay] = useState(true);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
   const [gettingStartedLoading, setGettingStartedLoading] = useState(false);
   const [gettingStartedError, setGettingStartedError] = useState<string | null>(null);
@@ -156,7 +161,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const gettingStartedResize = useRef<{ startWidth: number; startHeight: number; startX: number; startY: number } | null>(null);
   const readingProgressDrag = useRef<{ pointerId: number } | null>(null);
   const bookmarkHoverTimeout = useRef<number | null>(null);
-
+  const scribbleUndoHistory = useRef<Record<number, Stroke[][]>>({});
+  const scribbleRedoHistory = useRef<Record<number, Stroke[][]>>({});
 
 
   const clearBookmarkHoverTimeout = () => {
@@ -227,14 +233,32 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   useEffect(() => {
     if (!showGettingStarted) return;
     if (!gettingStartedRectInitialized) {
-      const width = Math.min(620, window.innerWidth - 32);
-      const height = Math.min(560, window.innerHeight - 72);
-      setGettingStartedRect({
-        width,
-        height,
-        left: Math.max(16, (window.innerWidth - width) / 2),
-        top: Math.max(16, (window.innerHeight - height) * 0.2)
-      });
+      const fallbackWidth = Math.min(620, window.innerWidth - 32);
+      const fallbackHeight = Math.min(560, window.innerHeight - 72);
+      const fallback = {
+        width: fallbackWidth,
+        height: fallbackHeight,
+        left: Math.max(16, (window.innerWidth - fallbackWidth) / 2),
+        top: Math.max(16, (window.innerHeight - fallbackHeight) * 0.2)
+      };
+      try {
+        const raw = window.localStorage.getItem(gettingStartedRectStorageKey(book.id));
+        const parsed = raw ? JSON.parse(raw) as Partial<GettingStartedModalRect> : null;
+        if (parsed && [parsed.left, parsed.top, parsed.width, parsed.height].every((value) => typeof value === "number" && Number.isFinite(value))) {
+          const width = clamp(parsed.width!, 360, window.innerWidth - 8);
+          const height = clamp(parsed.height!, 260, window.innerHeight - 8);
+          setGettingStartedRect({
+            width,
+            height,
+            left: clamp(parsed.left!, 8, Math.max(8, window.innerWidth - width - 8)),
+            top: clamp(parsed.top!, 8, Math.max(8, window.innerHeight - height - 8))
+          });
+        } else {
+          setGettingStartedRect(fallback);
+        }
+      } catch {
+        setGettingStartedRect(fallback);
+      }
       setGettingStartedRectInitialized(true);
     }
     const onMouseMove = (event: MouseEvent) => {
@@ -264,7 +288,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [showGettingStarted, gettingStartedRectInitialized]);
+  }, [book.id, showGettingStarted, gettingStartedRectInitialized]);
+
+
+  useEffect(() => {
+    if (!gettingStartedRectInitialized) return;
+    try {
+      window.localStorage.setItem(gettingStartedRectStorageKey(book.id), JSON.stringify(gettingStartedRect));
+    } catch {
+      // Ignore localStorage failures.
+    }
+  }, [book.id, gettingStartedRect, gettingStartedRectInitialized]);
   const seekFromProgressPointer = (clientX: number, element: HTMLElement) => {
     const bounds = element.getBoundingClientRect();
     if (bounds.width <= 0) return;
@@ -422,6 +456,44 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       .slice(0, 80);
   }, [pages]);
 
+
+
+  function applyStrokesChange(pageNumber: number, nextStrokes: Stroke[], options?: { recordHistory?: boolean }) {
+    const recordHistory = options?.recordHistory ?? true;
+    setDrawingsByPage((current) => {
+      const previous = current[pageNumber] ?? [];
+      if (recordHistory) {
+        const undoStack = scribbleUndoHistory.current[pageNumber] ?? [];
+        scribbleUndoHistory.current[pageNumber] = [...undoStack, previous.map((stroke) => ({ ...stroke, points: [...stroke.points] }))].slice(-100);
+        scribbleRedoHistory.current[pageNumber] = [];
+      }
+      return { ...current, [pageNumber]: nextStrokes };
+    });
+    void api(`/api/books/${book.id}/drawings/${pageNumber}`, { method: "PUT", body: JSON.stringify({ strokes: nextStrokes, overlay_type: "scribble" }) });
+  }
+
+  function undoScribble(pageNumber: number) {
+    const undoStack = scribbleUndoHistory.current[pageNumber] ?? [];
+    if (!undoStack.length) return;
+    const previous = undoStack[undoStack.length - 1];
+    scribbleUndoHistory.current[pageNumber] = undoStack.slice(0, -1);
+    const current = drawingsByPage[pageNumber] ?? [];
+    const redoStack = scribbleRedoHistory.current[pageNumber] ?? [];
+    scribbleRedoHistory.current[pageNumber] = [...redoStack, current];
+    applyStrokesChange(pageNumber, previous, { recordHistory: false });
+  }
+
+  function redoScribble(pageNumber: number) {
+    const redoStack = scribbleRedoHistory.current[pageNumber] ?? [];
+    if (!redoStack.length) return;
+    const next = redoStack[redoStack.length - 1];
+    scribbleRedoHistory.current[pageNumber] = redoStack.slice(0, -1);
+    const current = drawingsByPage[pageNumber] ?? [];
+    const undoStack = scribbleUndoHistory.current[pageNumber] ?? [];
+    scribbleUndoHistory.current[pageNumber] = [...undoStack, current].slice(-100);
+    applyStrokesChange(pageNumber, next, { recordHistory: false });
+  }
+
   const commandEntries = useMemo(() => {
     const base = [
       ...listActions().map((action) => ({ id: action.id, label: action.label, shortcut: action.shortcut ?? "", run: () => {
@@ -455,6 +527,12 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       if (key === "escape") {
         setCommandPaletteOpen(false);
         setSettingsOpen(false);
+      }
+      if ((event.metaKey || event.ctrlKey) && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoScribble(currentPage);
+        else undoScribble(currentPage);
+        return;
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (commandPaletteOpen) return;
@@ -910,14 +988,12 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               onScreenshot={onScreenshot}
               areaCaptureEnabled={areaCaptureEnabled}
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
-              strokes={showScribbles ? (gettingStartedByPage[pageNumber]?.overlay_strokes?.length ? [...(drawingsByPage[pageNumber] ?? []), ...gettingStartedByPage[pageNumber].overlay_strokes] : (drawingsByPage[pageNumber] ?? [])) : []}
+              strokes={showScribbles ? (drawingsByPage[pageNumber] ?? []) : []}
+              overlayStrokes={showScribbles && showGettingStartedOverlay ? (gettingStartedByPage[pageNumber]?.overlay_strokes ?? []) : []}
               drawEnabled={scribbleEnabled}
               drawColor={scribbleColor}
               eraseMode={scribbleEraser}
-              onStrokesChange={(strokes) => {
-                setDrawingsByPage((current) => ({ ...current, [pageNumber]: strokes }));
-                void api(`/api/books/${book.id}/drawings/${pageNumber}`, { method: "PUT", body: JSON.stringify({ strokes, overlay_type: "scribble" }) });
-              }}
+              onStrokesChange={(strokes, options) => applyStrokesChange(pageNumber, strokes, options)}
               loadText={(page) => {
                 if (!pages[page]) {
                   api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
@@ -1021,7 +1097,12 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <div className="getting-started-content">
             <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
           </div>
-          <button disabled={gettingStartedLoading} onClick={async () => {
+          <div className="getting-started-actions">
+            <button onClick={() => setShowGettingStartedOverlay((value) => !value)}>
+              <Eye size={15} />
+              <span>{showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}</span>
+            </button>
+            <button disabled={gettingStartedLoading} onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
             if (!pageCanvas) {
@@ -1044,7 +1125,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           }}>
             {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
             <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
-          </button>
+            </button>
+          </div>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
           <button
             className="getting-started-resize-handle"
@@ -1100,6 +1182,7 @@ function ReaderPage({
   onAreaCaptureComplete,
   loadText,
   strokes,
+  overlayStrokes,
   drawEnabled,
   drawColor,
   eraseMode,
@@ -1121,10 +1204,11 @@ function ReaderPage({
   onAreaCaptureComplete: () => void;
   loadText: (page: number) => void;
   strokes: Stroke[];
+  overlayStrokes: Stroke[];
   drawEnabled: boolean;
   drawColor: string;
   eraseMode: boolean;
-  onStrokesChange: (strokes: Stroke[]) => void;
+  onStrokesChange: (strokes: Stroke[], options?: { recordHistory?: boolean }) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -1225,20 +1309,33 @@ function ReaderPage({
     if (eraseMode) {
       const x = clamp(p.x / rect.width, 0, 1);
       const y = clamp(p.y / rect.height, 0, 1);
-      const radius = 0.02;
+      const radius = 0.03;
       onStrokesChange(strokes.filter((stroke) => !stroke.points.some((point) => Math.hypot(point.x - x, point.y - y) <= radius)));
       return;
     }
     drawStroke.current = { color: drawColor, width: 4, points: [{ x: p.x / rect.width, y: p.y / rect.height }] };
   }
   function moveDraw(event: React.PointerEvent<HTMLDivElement>) {
-    if (!drawStroke.current || !surfaceRef.current) return;
+    if (!surfaceRef.current) return;
     const p = localPoint(event, event.currentTarget);
     const rect = surfaceRef.current.getBoundingClientRect();
+    if (eraseMode) {
+      const x = clamp(p.x / rect.width, 0, 1);
+      const y = clamp(p.y / rect.height, 0, 1);
+      const radius = 0.03;
+      onStrokesChange(strokes.filter((stroke) => !stroke.points.some((point) => Math.hypot(point.x - x, point.y - y) <= radius)), { recordHistory: false });
+      return;
+    }
+    if (!drawStroke.current) return;
     drawStroke.current.points.push({ x: clamp(p.x / rect.width, 0, 1), y: clamp(p.y / rect.height, 0, 1) });
-    onStrokesChange([...(strokes ?? []), drawStroke.current]);
+    onStrokesChange([...(strokes ?? []), drawStroke.current], { recordHistory: false });
   }
-  function endDraw(_event: React.PointerEvent<HTMLDivElement>) { drawStroke.current = null; }
+  function endDraw(_event: React.PointerEvent<HTMLDivElement>) {
+    if (drawStroke.current && !eraseMode) {
+      onStrokesChange([...(strokes ?? []), drawStroke.current]);
+    }
+    drawStroke.current = null;
+  }
   function startAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
     if ((!event.ctrlKey && !areaCaptureEnabled) || !canvasRef.current || !surfaceRef.current) return;
     event.preventDefault();
@@ -1294,6 +1391,7 @@ function ReaderPage({
             <canvas ref={canvasRef} />
             <div className="textLayer" ref={textLayerRef} />
             <svg className="scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{strokes.map((stroke, idx) => <polyline key={idx} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
+            <svg className="scribble-layer getting-started-scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{overlayStrokes.map((stroke, idx) => <polyline key={`overlay-${idx}`} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
             {captureRect && <div className="area-capture-rect" style={captureRect} />}
           </>
         ) : (

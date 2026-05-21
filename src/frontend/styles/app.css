@@ -566,6 +566,10 @@ button:disabled {
   pointer-events: none;
 }
 
+.getting-started-scribble-layer {
+  z-index: 4;
+}
+
 .area-capture-rect {
   position: absolute;
   z-index: 3;
@@ -655,6 +659,8 @@ button:disabled {
 }
 
 .getting-started-modal {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   min-width: 360px;
   min-height: 260px;
@@ -674,6 +680,9 @@ button:disabled {
 }
 .getting-started-header {
   display: flex;
+  min-height: 40px;
+  height: 40px;
+  box-sizing: border-box;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
@@ -691,17 +700,30 @@ button:disabled {
 }
 .getting-started-content {
   flex: 1;
+  min-height: 0;
   min-height: 120px;
   overflow: auto;
   padding: 8px 8px 0;
 }
-.getting-started-modal > button {
-  margin: 0 8px;
+.getting-started-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px;
+  flex: 0 0 40px;
+  min-height: 40px;
+}
+
+.getting-started-actions > button {
+  flex: 1;
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
   border-radius: 9px;
   background: #244752;
   color: #fff;
 }
-.getting-started-modal > button:hover {
+
+.getting-started-actions > button:hover {
   background: #2d5866;
 }
 .getting-started-resize-handle {
@@ -728,7 +750,7 @@ button:disabled {
   position: fixed;
   inset: 0;
   z-index: 19;
-  background: rgba(24, 32, 37, 0.4);
+  background: transparent;
 }
 .tool-subgroup {
   display: flex;
