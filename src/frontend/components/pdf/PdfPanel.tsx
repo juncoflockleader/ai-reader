@@ -971,38 +971,47 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
 
       <div className={`pdf-scroll-frame ${typographyPreset}`} ref={scrollFrameRef}>
         <div className="pdf-scroll" ref={scrollRef}>
-          {visiblePages.map((pageNumber) => (
-            <ReaderPage
-              key={pageNumber}
-              pdf={pdf}
-              bookId={book.id}
-              pageNumber={pageNumber}
-              active={pageNumber === currentPage}
-              highlights={pageHighlights.filter((highlight) => highlight.page_number === pageNumber)}
-              bookmarked={bookmarks.some((bookmark) => bookmark.page_number === pageNumber)}
-              shouldRender={Math.abs(pageNumber - currentPage) <= 3}
-              zoom={zoom}
-              onVisible={() => setVisiblePage(pageNumber)}
-              onSelect={(event) => captureSelection(event, pageNumber)}
-              onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
-              onScreenshot={onScreenshot}
-              areaCaptureEnabled={areaCaptureEnabled}
-              onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
-              strokes={showScribbles ? (drawingsByPage[pageNumber] ?? []) : []}
-              overlayStrokes={showGettingStartedOverlay ? (gettingStartedByPage[pageNumber]?.overlay_strokes ?? []) : []}
-              drawEnabled={scribbleEnabled}
-              drawColor={scribbleColor}
-              eraseMode={scribbleEraser}
-              onStrokesChange={(strokes, options) => applyStrokesChange(pageNumber, strokes, options)}
-              loadText={(page) => {
-                if (!pages[page]) {
-                  api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
-                    setPages((current) => ({ ...current, [page]: result.page }))
-                  );
-                }
-              }}
-            />
-          ))}
+          {visiblePages.map((pageNumber) => {
+            const pageOverlayStrokes = gettingStartedByPage[pageNumber]?.overlay_strokes ?? [];
+            const overlayStrokes = showGettingStartedOverlay ? pageOverlayStrokes : [];
+            console.debug("[getting-started-overlay] pageNumber", pageNumber);
+            console.debug("[getting-started-overlay] showGettingStarted", showGettingStarted);
+            console.debug("[getting-started-overlay] showGettingStartedOverlay", showGettingStartedOverlay);
+            console.debug("[getting-started-overlay] page overlay_strokes length", pageOverlayStrokes.length);
+            console.debug("[getting-started-overlay] final overlayStrokes empty", overlayStrokes.length === 0);
+            return (
+              <ReaderPage
+                key={pageNumber}
+                pdf={pdf}
+                bookId={book.id}
+                pageNumber={pageNumber}
+                active={pageNumber === currentPage}
+                highlights={pageHighlights.filter((highlight) => highlight.page_number === pageNumber)}
+                bookmarked={bookmarks.some((bookmark) => bookmark.page_number === pageNumber)}
+                shouldRender={Math.abs(pageNumber - currentPage) <= 3}
+                zoom={zoom}
+                onVisible={() => setVisiblePage(pageNumber)}
+                onSelect={(event) => captureSelection(event, pageNumber)}
+                onContextMenu={(event) => openSelectionMenu(event, pageNumber)}
+                onScreenshot={onScreenshot}
+                areaCaptureEnabled={areaCaptureEnabled}
+                onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
+                strokes={showScribbles ? (drawingsByPage[pageNumber] ?? []) : []}
+                overlayStrokes={overlayStrokes}
+                drawEnabled={scribbleEnabled}
+                drawColor={scribbleColor}
+                eraseMode={scribbleEraser}
+                onStrokesChange={(strokes, options) => applyStrokesChange(pageNumber, strokes, options)}
+                loadText={(page) => {
+                  if (!pages[page]) {
+                    api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
+                      setPages((current) => ({ ...current, [page]: result.page }))
+                    );
+                  }
+                }}
+              />
+            );
+          })}
         </div>
         {rulerEnabled && (
           <div
