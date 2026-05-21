@@ -121,13 +121,50 @@ router.post("/books/:bookId/getting-started/:pageNumber", async (req, res, next)
 });
 
 function safeParse(text: string): Record<string, unknown> {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end <= start) return {};
+  const normalized = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+
+  const candidates = [normalized, text];
+  for (const candidate of candidates) {
+    const direct = parseObject(candidate);
+    if (direct) return direct;
+
+    const unwrapped = unwrapJsonEnvelope(candidate);
+    if (unwrapped) {
+      const parsed = parseObject(unwrapped);
+      if (parsed) return parsed;
+    }
+
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      const sliced = candidate.slice(start, end + 1);
+      const parsed = parseObject(sliced);
+      if (parsed) return parsed;
+    }
+  }
+
+  return {};
+}
+
+function parseObject(input: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+    const parsed = JSON.parse(input) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
   } catch {
-    return {};
+    return null;
+  }
+}
+
+function unwrapJsonEnvelope(input: string): string | null {
+  const trimmed = input.trim();
+  const maybeQuoted = (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"));
+  if (!maybeQuoted) return null;
+  try {
+    const jsonCompatible = trimmed.startsWith("'") ? JSON.stringify(trimmed.slice(1, -1)) : trimmed;
+    const parsed = JSON.parse(jsonCompatible) as unknown;
+    return typeof parsed === "string" ? parsed : null;
+  } catch {
+    return null;
   }
 }
 
