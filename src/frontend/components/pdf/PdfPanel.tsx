@@ -40,6 +40,7 @@ type PdfContextMenu =
 
 type ReadingRulerHeight = "small" | "medium" | "large";
 type ReaderTypographyPreset = "compact" | "comfortable" | "focused";
+type GettingStartedModalRect = { left: number; top: number; width: number; height: number };
 
 const rulerHeights: Record<ReadingRulerHeight, number> = {
   small: 36,
@@ -129,6 +130,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showGettingStarted, setShowGettingStarted] = useState(false);
   const [gettingStartedLoading, setGettingStartedLoading] = useState(false);
   const [gettingStartedError, setGettingStartedError] = useState<string | null>(null);
+  const [gettingStartedRect, setGettingStartedRect] = useState<GettingStartedModalRect>({ left: 0, top: 0, width: 620, height: 520 });
+  const [gettingStartedRectInitialized, setGettingStartedRectInitialized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
@@ -149,6 +152,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [bookmarkPreviewImages, setBookmarkPreviewImages] = useState<Record<string, string>>({});
   const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const bookmarkHoverCardRef = useRef<HTMLDivElement | null>(null);
+  const gettingStartedDrag = useRef<{ offsetX: number; offsetY: number } | null>(null);
+  const gettingStartedResize = useRef<{ startWidth: number; startHeight: number; startX: number; startY: number } | null>(null);
   const readingProgressDrag = useRef<{ pointerId: number } | null>(null);
   const bookmarkHoverTimeout = useRef<number | null>(null);
 
@@ -218,6 +223,48 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       console.error("Failed to render bookmark preview", error);
     }
   };
+
+  useEffect(() => {
+    if (!showGettingStarted) return;
+    if (!gettingStartedRectInitialized) {
+      const width = Math.min(620, window.innerWidth - 32);
+      const height = Math.min(560, window.innerHeight - 72);
+      setGettingStartedRect({
+        width,
+        height,
+        left: Math.max(16, (window.innerWidth - width) / 2),
+        top: Math.max(16, (window.innerHeight - height) * 0.2)
+      });
+      setGettingStartedRectInitialized(true);
+    }
+    const onMouseMove = (event: MouseEvent) => {
+      const minWidth = 360;
+      const minHeight = 260;
+      if (gettingStartedDrag.current) {
+        setGettingStartedRect((current) => {
+          const left = clamp(event.clientX - gettingStartedDrag.current!.offsetX, 8, Math.max(8, window.innerWidth - current.width - 8));
+          const top = clamp(event.clientY - gettingStartedDrag.current!.offsetY, 8, Math.max(8, window.innerHeight - current.height - 8));
+          return { ...current, left, top };
+        });
+      } else if (gettingStartedResize.current) {
+        setGettingStartedRect((current) => {
+          const nextWidth = clamp(gettingStartedResize.current!.startWidth + (event.clientX - gettingStartedResize.current!.startX), minWidth, window.innerWidth - current.left - 8);
+          const nextHeight = clamp(gettingStartedResize.current!.startHeight + (event.clientY - gettingStartedResize.current!.startY), minHeight, window.innerHeight - current.top - 8);
+          return { ...current, width: nextWidth, height: nextHeight };
+        });
+      }
+    };
+    const onMouseUp = () => {
+      gettingStartedDrag.current = null;
+      gettingStartedResize.current = null;
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [showGettingStarted, gettingStartedRectInitialized]);
   const seekFromProgressPointer = (clientX: number, element: HTMLElement) => {
     const bounds = element.getBoundingClientRect();
     if (bounds.width <= 0) return;
@@ -955,8 +1002,22 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       )}
       {showGettingStarted && (
         <div className="modal-overlay" onClick={() => setShowGettingStarted(false)}>
-        <div className="selection-menu command-palette getting-started-modal" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }} onClick={(event) => event.stopPropagation()}>
-          <h4 style={{ margin: "0 0 8px 0" }}>Getting started · page {currentPage}</h4>
+        <div
+          className="selection-menu command-palette getting-started-modal"
+          style={{ left: gettingStartedRect.left, top: gettingStartedRect.top, width: gettingStartedRect.width, height: gettingStartedRect.height }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div
+            className="getting-started-header"
+            onMouseDown={(event) => {
+              const rect = event.currentTarget.parentElement?.getBoundingClientRect();
+              if (!rect) return;
+              gettingStartedDrag.current = { offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+            }}
+          >
+            <h4>Getting started · page {currentPage}</h4>
+            <span>Drag to move</span>
+          </div>
           <div className="getting-started-content">
             <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
           </div>
@@ -985,6 +1046,19 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
           </button>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
+          <button
+            className="getting-started-resize-handle"
+            aria-label="Resize getting started"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              gettingStartedResize.current = {
+                startWidth: gettingStartedRect.width,
+                startHeight: gettingStartedRect.height,
+                startX: event.clientX,
+                startY: event.clientY
+              };
+            }}
+          />
         </div>
         </div>
       )}
