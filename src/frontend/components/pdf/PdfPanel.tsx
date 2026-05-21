@@ -81,6 +81,33 @@ function persistReaderZoom(bookId: string, zoom: number) {
   }
 }
 
+function normalizeGettingStartedItem(item: GettingStartedItem): GettingStartedItem {
+  const text = item.summary_text?.trim() ?? "";
+  if (!text) return item;
+  const parsed = tryParseMaybeJson(text);
+  if (!parsed) return item;
+  const summary = typeof parsed.summary === "string"
+    ? parsed.summary
+    : (typeof parsed.summary_text === "string" ? parsed.summary_text : item.summary_text);
+  const parsedStrokes = Array.isArray(parsed.overlay_strokes)
+    ? parsed.overlay_strokes
+    : (Array.isArray(parsed.strokes) ? parsed.strokes : item.overlay_strokes);
+  return { summary_text: summary, overlay_strokes: parsedStrokes as Stroke[] };
+}
+
+function tryParseMaybeJson(text: string): Record<string, unknown> | null {
+  const normalized = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  for (const candidate of [normalized, text.trim()]) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    } catch {
+      // Ignore parsing failures and return null below.
+    }
+  }
+  return null;
+}
+
 export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion, onScreenshot }: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<Record<number, PageData>>({});
@@ -271,7 +298,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       .catch(() => undefined);
     api<{ item: GettingStartedItem | null }>(`/api/books/${book.id}/getting-started/${currentPage}`).then((result) => {
       if (!result.item) return;
-      const item = result.item;
+      const item = normalizeGettingStartedItem(result.item);
       setGettingStartedByPage((current) => ({ ...current, [currentPage]: item }));
     }).catch(() => undefined);
   }, [book.id, currentPage]);
@@ -947,7 +974,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Getting started timed out after 30 seconds.")), 30_000));
               const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, { method: "POST", body: JSON.stringify({ screenshot_data_url: screenshot, page_text: pageText }) });
               const result = await Promise.race([request, timeout]);
-              setGettingStartedByPage((current) => ({ ...current, [currentPage]: result.item }));
+              setGettingStartedByPage((current) => ({ ...current, [currentPage]: normalizeGettingStartedItem(result.item) }));
             } catch (error) {
               setGettingStartedError(error instanceof Error ? error.message : "Could not generate getting started content.");
             } finally {
