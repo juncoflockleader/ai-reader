@@ -40,6 +40,7 @@ type PdfContextMenu =
 
 type ReadingRulerHeight = "small" | "medium" | "large";
 type ReaderTypographyPreset = "compact" | "comfortable" | "focused";
+type GettingStartedModalRect = { left: number; top: number; width: number; height: number };
 
 const rulerHeights: Record<ReadingRulerHeight, number> = {
   small: 36,
@@ -129,6 +130,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showGettingStarted, setShowGettingStarted] = useState(false);
   const [gettingStartedLoading, setGettingStartedLoading] = useState(false);
   const [gettingStartedError, setGettingStartedError] = useState<string | null>(null);
+  const [gettingStartedRect, setGettingStartedRect] = useState<GettingStartedModalRect>({ left: 0, top: 0, width: 620, height: 520 });
+  const [gettingStartedRectInitialized, setGettingStartedRectInitialized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
@@ -149,7 +152,10 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [bookmarkPreviewImages, setBookmarkPreviewImages] = useState<Record<string, string>>({});
   const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const bookmarkHoverCardRef = useRef<HTMLDivElement | null>(null);
+  const gettingStartedDrag = useRef<{ offsetX: number; offsetY: number } | null>(null);
+  const gettingStartedResize = useRef<{ startWidth: number; startHeight: number; startX: number; startY: number } | null>(null);
   const readingProgressDrag = useRef<{ pointerId: number } | null>(null);
+  const scribbleHistory = useRef<Record<number, { undo: Stroke[][]; redo: Stroke[][] }>>({});
   const bookmarkHoverTimeout = useRef<number | null>(null);
 
 
@@ -218,6 +224,86 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       console.error("Failed to render bookmark preview", error);
     }
   };
+
+  function updatePageStrokes(pageNumber: number, next: Stroke[], options?: { recordHistory?: boolean }) {
+    const shouldRecord = options?.recordHistory ?? true;
+    if (shouldRecord) {
+      const current = drawingsByPage[pageNumber] ?? [];
+      const state = scribbleHistory.current[pageNumber] ?? { undo: [], redo: [] };
+      state.undo.push(current);
+      state.redo = [];
+      scribbleHistory.current[pageNumber] = state;
+    }
+    setDrawingsByPage((current) => ({ ...current, [pageNumber]: next }));
+    void api(`/api/books/${book.id}/drawings/${pageNumber}`, { method: "PUT", body: JSON.stringify({ strokes: next, overlay_type: "scribble" }) });
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!scribbleEnabled || !(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== "z") return;
+      const state = scribbleHistory.current[currentPage] ?? { undo: [], redo: [] };
+      const current = drawingsByPage[currentPage] ?? [];
+      if (event.shiftKey) {
+        const redoStrokes = state.redo.pop();
+        if (!redoStrokes) return;
+        event.preventDefault();
+        state.undo.push(current);
+        scribbleHistory.current[currentPage] = state;
+        updatePageStrokes(currentPage, redoStrokes, { recordHistory: false });
+        return;
+      }
+      const undoStrokes = state.undo.pop();
+      if (!undoStrokes) return;
+      event.preventDefault();
+      state.redo.push(current);
+      scribbleHistory.current[currentPage] = state;
+      updatePageStrokes(currentPage, undoStrokes, { recordHistory: false });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [currentPage, drawingsByPage, scribbleEnabled]);
+
+  useEffect(() => {
+    if (!showGettingStarted) return;
+    if (!gettingStartedRectInitialized) {
+      const width = Math.min(620, window.innerWidth - 32);
+      const height = Math.min(560, window.innerHeight - 72);
+      setGettingStartedRect({
+        width,
+        height,
+        left: Math.max(16, (window.innerWidth - width) / 2),
+        top: Math.max(16, (window.innerHeight - height) * 0.2)
+      });
+      setGettingStartedRectInitialized(true);
+    }
+    const onMouseMove = (event: MouseEvent) => {
+      const minWidth = 360;
+      const minHeight = 260;
+      if (gettingStartedDrag.current) {
+        setGettingStartedRect((current) => {
+          const left = clamp(event.clientX - gettingStartedDrag.current!.offsetX, 8, Math.max(8, window.innerWidth - current.width - 8));
+          const top = clamp(event.clientY - gettingStartedDrag.current!.offsetY, 8, Math.max(8, window.innerHeight - current.height - 8));
+          return { ...current, left, top };
+        });
+      } else if (gettingStartedResize.current) {
+        setGettingStartedRect((current) => {
+          const nextWidth = clamp(gettingStartedResize.current!.startWidth + (event.clientX - gettingStartedResize.current!.startX), minWidth, window.innerWidth - current.left - 8);
+          const nextHeight = clamp(gettingStartedResize.current!.startHeight + (event.clientY - gettingStartedResize.current!.startY), minHeight, window.innerHeight - current.top - 8);
+          return { ...current, width: nextWidth, height: nextHeight };
+        });
+      }
+    };
+    const onMouseUp = () => {
+      gettingStartedDrag.current = null;
+      gettingStartedResize.current = null;
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [showGettingStarted, gettingStartedRectInitialized]);
   const seekFromProgressPointer = (clientX: number, element: HTMLElement) => {
     const bounds = element.getBoundingClientRect();
     if (bounds.width <= 0) return;
@@ -867,10 +953,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               drawEnabled={scribbleEnabled}
               drawColor={scribbleColor}
               eraseMode={scribbleEraser}
-              onStrokesChange={(strokes) => {
-                setDrawingsByPage((current) => ({ ...current, [pageNumber]: strokes }));
-                void api(`/api/books/${book.id}/drawings/${pageNumber}`, { method: "PUT", body: JSON.stringify({ strokes, overlay_type: "scribble" }) });
-              }}
+              onStrokesChange={(strokes) => updatePageStrokes(pageNumber, strokes)}
               loadText={(page) => {
                 if (!pages[page]) {
                   api<{ page: PageData }>(`/api/books/${book.id}/pages/${page}`).then((result) =>
@@ -954,9 +1037,23 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
       {showGettingStarted && (
-        <div className="modal-overlay" onClick={() => setShowGettingStarted(false)}>
-        <div className="selection-menu command-palette getting-started-modal" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }} onClick={(event) => event.stopPropagation()}>
-          <h4 style={{ margin: "0 0 8px 0" }}>Getting started · page {currentPage}</h4>
+        <div className="modal-overlay" style={{ background: "transparent", pointerEvents: "none" }}>
+        <div
+          className="selection-menu command-palette getting-started-modal"
+          style={{ left: gettingStartedRect.left, top: gettingStartedRect.top, width: gettingStartedRect.width, height: gettingStartedRect.height, pointerEvents: "auto" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div
+            className="getting-started-header"
+            onMouseDown={(event) => {
+              const rect = event.currentTarget.parentElement?.getBoundingClientRect();
+              if (!rect) return;
+              gettingStartedDrag.current = { offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+            }}
+          >
+            <h4>Getting started · page {currentPage}</h4>
+            <span>Drag to move</span>
+          </div>
           <div className="getting-started-content">
             <MarkdownText text={gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."} />
           </div>
@@ -985,6 +1082,19 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
           </button>
           {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
+          <button
+            className="getting-started-resize-handle"
+            aria-label="Resize getting started"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              gettingStartedResize.current = {
+                startWidth: gettingStartedRect.width,
+                startHeight: gettingStartedRect.height,
+                startX: event.clientX,
+                startY: event.clientY
+              };
+            }}
+          />
         </div>
         </div>
       )}
@@ -1060,6 +1170,7 @@ function ReaderPage({
   const [fitWidth, setFitWidth] = useState(760);
   const [captureRect, setCaptureRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const drawStroke = useRef<Stroke | null>(null);
+  const erasePointerId = useRef<number | null>(null);
   const canvasWidth = Math.round(fitWidth * zoom);
 
   useEffect(() => {
@@ -1148,23 +1259,38 @@ function ReaderPage({
     if (event.button !== 0 || !surfaceRef.current) return;
     const p = localPoint(event, event.currentTarget);
     const rect = surfaceRef.current.getBoundingClientRect();
+    const eraseAtPoint = (x: number, y: number) => {
+      const radius = 0.02;
+      onStrokesChange(strokes.filter((stroke) => !stroke.points.some((point) => Math.hypot(point.x - x, point.y - y) <= radius)));
+    };
     if (eraseMode) {
+      const x = clamp(p.x / rect.width, 0, 1);
+      const y = clamp(p.y / rect.height, 0, 1);
+      erasePointerId.current = event.pointerId;
+      eraseAtPoint(x, y);
+      return;
+    }
+    drawStroke.current = { color: drawColor, width: 4, points: [{ x: p.x / rect.width, y: p.y / rect.height }] };
+  }
+  function moveDraw(event: React.PointerEvent<HTMLDivElement>) {
+    if (!surfaceRef.current) return;
+    const p = localPoint(event, event.currentTarget);
+    const rect = surfaceRef.current.getBoundingClientRect();
+    if (eraseMode && erasePointerId.current === event.pointerId) {
       const x = clamp(p.x / rect.width, 0, 1);
       const y = clamp(p.y / rect.height, 0, 1);
       const radius = 0.02;
       onStrokesChange(strokes.filter((stroke) => !stroke.points.some((point) => Math.hypot(point.x - x, point.y - y) <= radius)));
       return;
     }
-    drawStroke.current = { color: drawColor, width: 4, points: [{ x: p.x / rect.width, y: p.y / rect.height }] };
-  }
-  function moveDraw(event: React.PointerEvent<HTMLDivElement>) {
-    if (!drawStroke.current || !surfaceRef.current) return;
-    const p = localPoint(event, event.currentTarget);
-    const rect = surfaceRef.current.getBoundingClientRect();
+    if (!drawStroke.current) return;
     drawStroke.current.points.push({ x: clamp(p.x / rect.width, 0, 1), y: clamp(p.y / rect.height, 0, 1) });
     onStrokesChange([...(strokes ?? []), drawStroke.current]);
   }
-  function endDraw(_event: React.PointerEvent<HTMLDivElement>) { drawStroke.current = null; }
+  function endDraw(_event: React.PointerEvent<HTMLDivElement>) {
+    drawStroke.current = null;
+    erasePointerId.current = null;
+  }
   function startAreaCapture(event: React.PointerEvent<HTMLDivElement>) {
     if ((!event.ctrlKey && !areaCaptureEnabled) || !canvasRef.current || !surfaceRef.current) return;
     event.preventDefault();
