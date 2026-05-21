@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Highlighter, ImagePlus, Keyboard, Ruler, Search, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Brush, Eye, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -97,6 +97,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [drawingsByPage, setDrawingsByPage] = useState<Record<number, Stroke[]>>({});
   const [gettingStartedByPage, setGettingStartedByPage] = useState<Record<number, GettingStartedItem>>({});
   const [showGettingStarted, setShowGettingStarted] = useState(false);
+  const [gettingStartedLoading, setGettingStartedLoading] = useState(false);
+  const [gettingStartedError, setGettingStartedError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<HTMLDivElement>(null);
   const programmaticScrollUntil = useRef(0);
@@ -611,13 +613,13 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <ImagePlus size={16} />
         </button>
         <button className={scribbleEnabled ? "tool-button active" : "tool-button"} onClick={() => setScribbleEnabled((v) => !v)} title="Draw scribbles">
-          <Highlighter size={16} />
+          <Brush size={16} />
         </button>
         <button className={showScribbles ? "tool-button active" : "tool-button"} onClick={() => setShowScribbles((v) => !v)} title="Show/hide scribbles">
-          <Highlighter size={16} />
+          <Eye size={16} />
         </button>
         <button className={showGettingStarted ? "tool-button active" : "tool-button"} onClick={() => setShowGettingStarted((v) => !v)} title="Show getting started">
-          Getting started
+          <Sparkles size={16} />
         </button>
         <button className={rulerEnabled ? "tool-button active" : "tool-button"} onClick={() => setRulerEnabled((enabled) => !enabled)} title="Reading ruler">
           <Ruler size={16} />
@@ -895,17 +897,34 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
       {showGettingStarted && (
-        <div className="selection-menu command-palette" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }}>
+        <div className="selection-menu command-palette getting-started-modal" style={{ left: "50%", top: "18%", transform: "translateX(-50%)", width: "min(620px, 92vw)" }}>
           <h4 style={{ margin: "0 0 8px 0" }}>Getting started · page {currentPage}</h4>
           <p style={{ whiteSpace: "pre-wrap" }}>{gettingStartedByPage[currentPage]?.summary_text ?? "No summary yet."}</p>
-          <button onClick={async () => {
+          <button disabled={gettingStartedLoading} onClick={async () => {
             const pageText = pages[currentPage]?.clean_text ?? "";
             const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
-            if (!pageCanvas) return;
-            const screenshot = pageCanvas.toDataURL("image/png");
-            const result = await api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, { method: "POST", body: JSON.stringify({ screenshot_data_url: screenshot, page_text: pageText }) });
-            setGettingStartedByPage((current) => ({ ...current, [currentPage]: result.item }));
-          }}>Generate / refresh</button>
+            if (!pageCanvas) {
+              setGettingStartedError("Page preview is not ready yet. Try again in a moment.");
+              return;
+            }
+            setGettingStartedLoading(true);
+            setGettingStartedError(null);
+            try {
+              const screenshot = pageCanvas.toDataURL("image/png");
+              const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Getting started timed out after 30 seconds.")), 30_000));
+              const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, { method: "POST", body: JSON.stringify({ screenshot_data_url: screenshot, page_text: pageText }) });
+              const result = await Promise.race([request, timeout]);
+              setGettingStartedByPage((current) => ({ ...current, [currentPage]: result.item }));
+            } catch (error) {
+              setGettingStartedError(error instanceof Error ? error.message : "Could not generate getting started content.");
+            } finally {
+              setGettingStartedLoading(false);
+            }
+          }}>
+            {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
+            <span>{gettingStartedLoading ? "Waiting for response…" : "Generate / refresh"}</span>
+          </button>
+          {gettingStartedError ? <p className="inline-error">{gettingStartedError}</p> : null}
         </div>
       )}
       {commandPaletteOpen && (
@@ -1122,6 +1141,7 @@ function ReaderPage({
         onMouseUp={onSelect}
         onContextMenu={onContextMenu}
         data-capture-mode={areaCaptureEnabled ? "true" : undefined}
+        data-draw-mode={drawEnabled ? "true" : undefined}
       >
         {shouldRender ? (
           <>
