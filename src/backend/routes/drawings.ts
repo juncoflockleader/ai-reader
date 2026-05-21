@@ -106,8 +106,11 @@ router.post("/books/:bookId/getting-started/:pageNumber", async (req, res, next)
       ]
     }, apiKey);
     const parsed = safeParse(response.content);
-    const summary = typeof parsed.summary === "string" ? parsed.summary : response.content;
-    const overlayStrokes = Array.isArray(parsed.overlay_strokes) ? parsed.overlay_strokes : [];
+    const summaryCandidate = typeof parsed.summary === "string" ? parsed.summary : (typeof parsed.summary_text === "string" ? parsed.summary_text : "");
+    const summary = summaryCandidate || response.content;
+    const overlayStrokes = Array.isArray(parsed.overlay_strokes)
+      ? parsed.overlay_strokes
+      : (Array.isArray(parsed.strokes) ? parsed.strokes : []);
     const now = nowIso();
     const existing = getDb().prepare("SELECT id, created_at FROM getting_started_pages WHERE book_id = ? AND page_number = ?").get(req.params.bookId, pageNumber) as { id: string; created_at: string } | undefined;
     getDb().prepare(`INSERT INTO getting_started_pages (id, book_id, page_number, summary_text, overlay_strokes_json, screenshot_data_url, llm_model, created_at, updated_at)
