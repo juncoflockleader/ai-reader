@@ -647,7 +647,8 @@ writerRouter.post("/documents/:id/suggestions/:sid/apply", (req, res, next) => {
       ).run(resolutionNote, appliedAt, suggestion.id);
 
       const updatedSuggestion = fetchSuggestionById(db, document.id, suggestion.id);
-      if (updatedSuggestion) {
+      const latestRevisionAfterApply = result.latest_revision;
+      if (updatedSuggestion && latestRevisionAfterApply) {
         rebasePendingSuggestionsAfterApply(db, {
           documentId: document.id,
           appliedSuggestionId: updatedSuggestion.id,
@@ -655,7 +656,7 @@ writerRouter.post("/documents/:id/suggestions/:sid/apply", (req, res, next) => {
           originalRangeEnd: suggestion.target_end,
           insertedText: suggestion.suggested_text,
           latestTextBeforeApply: latestRevision.full_text,
-          latestTextAfterApply: result.latest_revision.full_text
+          latestTextAfterApply: latestRevisionAfterApply.full_text
         });
       }
       db.exec("COMMIT");
