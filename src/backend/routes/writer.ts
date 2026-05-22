@@ -1593,19 +1593,45 @@ function parseCoachJsonResponse(content: string): { answer: string; suggestions:
 }
 
 function parseJsonObject(content: string) {
-  const trimmed = content.trim();
-  try {
-    return JSON.parse(trimmed) as unknown;
-  } catch {}
+  const attempts = [content.trim(), stripCodeFence(content.trim())].filter(Boolean) as string[];
+  for (const candidate of attempts) {
+    const parsed = parseJsonValue(candidate);
+    if (isRecord(parsed)) return parsed;
 
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  try {
-    return JSON.parse(trimmed.slice(start, end + 1)) as unknown;
-  } catch {
-    return null;
+    const embedded = parseEmbeddedJson(candidate);
+    if (isRecord(embedded)) return embedded;
   }
+
+  return null;
+}
+
+function parseJsonValue(input: string): unknown {
+  let current = input;
+  for (let depth = 0; depth < 3; depth += 1) {
+    try {
+      const parsed = JSON.parse(current) as unknown;
+      if (typeof parsed === "string") {
+        current = parsed.trim();
+        continue;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function parseEmbeddedJson(input: string): unknown {
+  const start = input.indexOf("{");
+  const end = input.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  return parseJsonValue(input.slice(start, end + 1));
+}
+
+function stripCodeFence(input: string): string {
+  if (!input.startsWith("```") || !input.endsWith("```")) return input;
+  return input.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 }
 
 function buildLocalCoachResult(input: {
