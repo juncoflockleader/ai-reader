@@ -356,9 +356,20 @@ button:disabled {
 }
 
 .page-stepper {
+  flex: 0 0 auto;
+  min-width: max-content;
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+}
+
+.page-stepper span {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .page-stepper button,
@@ -398,6 +409,41 @@ button:disabled {
 .search-box {
   flex: 1;
   max-width: 460px;
+}
+
+.search-popover-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1300;
+  width: min(360px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid #c5d3d5;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(24, 32, 37, 0.18);
+}
+
+.search-popover .search-box {
+  width: 100%;
+  max-width: none;
+}
+
+.search-box button {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #edf3f4;
+  color: #42575e;
 }
 
 .search-box input,
@@ -659,6 +705,7 @@ button:disabled {
 }
 
 .getting-started-modal {
+  z-index: 1200;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -747,12 +794,6 @@ button:disabled {
 .getting-started-modal .inline-error {
   margin: 0;
   border-radius: 6px;
-}
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  background: transparent;
 }
 .tool-subgroup {
   display: flex;

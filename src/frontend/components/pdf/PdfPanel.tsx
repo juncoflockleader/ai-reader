@@ -88,16 +88,51 @@ function persistReaderZoom(bookId: string, zoom: number) {
 
 function normalizeGettingStartedItem(item: GettingStartedItem): GettingStartedItem {
   const text = item.summary_text?.trim() ?? "";
-  if (!text) return item;
   const parsed = tryParseMaybeJson(text);
-  if (!parsed) return item;
-  const summary = typeof parsed.summary === "string"
+  const summary = parsed && typeof parsed.summary === "string"
     ? parsed.summary
-    : (typeof parsed.summary_text === "string" ? parsed.summary_text : item.summary_text);
-  const parsedStrokes = Array.isArray(parsed.overlay_strokes)
+    : (parsed && typeof parsed.summary_text === "string" ? parsed.summary_text : item.summary_text);
+  const rawStrokes = parsed && Array.isArray(parsed.overlay_strokes)
     ? parsed.overlay_strokes
-    : (Array.isArray(parsed.strokes) ? parsed.strokes : item.overlay_strokes);
-  return { summary_text: summary, overlay_strokes: parsedStrokes as Stroke[] };
+    : (parsed && Array.isArray(parsed.strokes) ? parsed.strokes : item.overlay_strokes);
+  const overlayStrokes = coerceStrokes(rawStrokes);
+  return {
+    summary_text: summary,
+    overlay_strokes: overlayStrokes.length > 0 ? overlayStrokes : (summary.trim() ? fallbackGettingStartedStrokes() : [])
+  };
+}
+
+function coerceStrokes(input: unknown): Stroke[] {
+  if (!Array.isArray(input)) return [];
+  return input.flatMap((stroke, strokeIndex) => {
+    if (!stroke || typeof stroke !== "object" || Array.isArray(stroke)) return [];
+    const record = stroke as Record<string, unknown>;
+    const color = typeof record.color === "string" && record.color.trim()
+      ? record.color
+      : fallbackStrokeColors[strokeIndex % fallbackStrokeColors.length];
+    const width = Number(record.width);
+    const points = Array.isArray(record.points)
+      ? record.points.flatMap((point) => {
+        if (!point || typeof point !== "object" || Array.isArray(point)) return [];
+        const pointRecord = point as Record<string, unknown>;
+        const x = Number(pointRecord.x);
+        const y = Number(pointRecord.y);
+        return Number.isFinite(x) && Number.isFinite(y) ? [{ x, y }] : [];
+      })
+      : [];
+    if (points.length < 2) return [];
+    return [{ color, width: clamp(width, 1, 18), points }];
+  });
+}
+
+const fallbackStrokeColors = ["#e85d4f", "#2f8f83", "#f0b429", "#6c63ff"];
+
+function fallbackGettingStartedStrokes(): Stroke[] {
+  return [
+    { color: fallbackStrokeColors[0], width: 5, points: [{ x: 0.12, y: 0.1 }, { x: 0.86, y: 0.1 }] },
+    { color: fallbackStrokeColors[1], width: 3, points: [{ x: 0.12, y: 0.15 }, { x: 0.12, y: 0.29 }, { x: 0.88, y: 0.29 }, { x: 0.88, y: 0.15 }, { x: 0.12, y: 0.15 }] },
+    { color: fallbackStrokeColors[2], width: 4, points: [{ x: 0.16, y: 0.42 }, { x: 0.78, y: 0.42 }] }
+  ];
 }
 
 function tryParseMaybeJson(text: string): Record<string, unknown> | null {
@@ -118,6 +153,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [pages, setPages] = useState<Record<number, PageData>>({});
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [zoom, setZoom] = useState(() => readStoredReaderZoom(book.id));
   const [contextMenu, setContextMenu] = useState<PdfContextMenu | null>(null);
   const [rulerEnabled, setRulerEnabled] = useState(false);
@@ -155,6 +191,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [bookmarkHoverCardReady, setBookmarkHoverCardReady] = useState(false);
   const [bookmarkHoverCardOffset, setBookmarkHoverCardOffset] = useState(0);
   const [bookmarkPreviewImages, setBookmarkPreviewImages] = useState<Record<string, string>>({});
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
   const bookmarkButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const bookmarkHoverCardRef = useRef<HTMLDivElement | null>(null);
   const gettingStartedDrag = useRef<{ offsetX: number; offsetY: number } | null>(null);
@@ -211,6 +249,23 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
     setBookmarkHoverCardOffset(horizontalOffset);
     setBookmarkHoverCardReady(true);
   }, [hoveredBookmarkId, bookmarkPreviewImages]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const closeSearchOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && searchWrapRef.current?.contains(target)) return;
+      setSearchOpen(false);
+    };
+    window.addEventListener("pointerdown", closeSearchOnOutsidePointer);
+    return () => window.removeEventListener("pointerdown", closeSearchOnOutsidePointer);
+  }, [searchOpen]);
 
   const ensureBookmarkPreviewImage = async (bookmarkId: string, pageNumber: number) => {
     if (bookmarkPreviewImages[bookmarkId] || !pdf) return;
@@ -527,6 +582,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
       if (key === "escape") {
         setCommandPaletteOpen(false);
         setSettingsOpen(false);
+        setSearchOpen(false);
       }
       if ((event.metaKey || event.ctrlKey) && key === "z") {
         event.preventDefault();
@@ -744,10 +800,39 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             <img src={`data:image/svg+xml;base64,${NEXT_ICON_BASE64}`} alt="" />
           </button>
         </div>
-        <label className="search-box">
-          <Search size={16} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search loaded text" />
-        </label>
+        <div className="search-popover-wrap" ref={searchWrapRef}>
+          <button
+            type="button"
+            className={searchOpen || query.trim() ? "tool-button active" : "tool-button"}
+            onClick={() => setSearchOpen((open) => !open)}
+            title="Search loaded text"
+            aria-label="Search loaded text"
+            aria-expanded={searchOpen}
+          >
+            <Search size={16} />
+          </button>
+          {searchOpen && (
+            <div className="search-popover">
+              <label className="search-box">
+                <Search size={16} />
+                <input
+                  ref={searchInputRef}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search loaded text"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") setSearchOpen(false);
+                  }}
+                />
+                {query.trim() ? (
+                  <button type="button" onClick={() => setQuery("")} title="Clear search" aria-label="Clear search">
+                    <X size={14} />
+                  </button>
+                ) : null}
+              </label>
+            </div>
+          )}
+        </div>
         {(() => {
           const action = getAction("highlightSelection");
           const Icon = action.icon;
@@ -1077,11 +1162,9 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         </div>
       )}
       {showGettingStarted && (
-        <div className="modal-overlay" onClick={() => setShowGettingStarted(false)}>
         <div
           className="selection-menu command-palette getting-started-modal"
           style={{ left: gettingStartedRect.left, top: gettingStartedRect.top, width: gettingStartedRect.width, height: gettingStartedRect.height }}
-          onClick={(event) => event.stopPropagation()}
         >
           <div
             className="getting-started-header"
@@ -1092,7 +1175,7 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             }}
           >
             <h4>Getting started · page {currentPage}</h4>
-            <div className="getting-started-header-actions">
+            <div className="getting-started-header-actions" onMouseDown={(event) => event.stopPropagation()}>
               <button
                 type="button"
                 className="getting-started-header-button"
@@ -1118,9 +1201,18 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             setGettingStartedLoading(true);
             setGettingStartedError(null);
             try {
-              const screenshot = pageCanvas.toDataURL("image/png");
+              const screenshot = createCoordinateGuideScreenshot(pageCanvas);
               const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Getting started timed out after 30 seconds.")), 30_000));
-              const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, { method: "POST", body: JSON.stringify({ screenshot_data_url: screenshot, page_text: pageText }) });
+              const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, {
+                method: "POST",
+                body: JSON.stringify({
+                  screenshot_data_url: screenshot.dataUrl,
+                  page_text: pageText,
+                  page_image_width: screenshot.width,
+                  page_image_height: screenshot.height,
+                  coordinate_system: "normalized_page_grid_v1"
+                })
+              });
               const result = await Promise.race([request, timeout]);
               setGettingStartedByPage((current) => ({ ...current, [currentPage]: normalizeGettingStartedItem(result.item) }));
             } catch (error) {
@@ -1128,8 +1220,17 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
             } finally {
               setGettingStartedLoading(false);
             }
-          }}>
+              }}>
                 {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
+              </button>
+              <button
+                type="button"
+                className="getting-started-header-button"
+                onClick={() => setShowGettingStarted(false)}
+                title="Close getting started"
+                aria-label="Close getting started"
+              >
+                <X size={15} />
               </button>
             </div>
           </div>
@@ -1150,7 +1251,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               };
             }}
           />
-        </div>
         </div>
       )}
       {commandPaletteOpen && (
@@ -1226,8 +1326,13 @@ function ReaderPage({
   const dragStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [fitWidth, setFitWidth] = useState(760);
   const [captureRect, setCaptureRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [pagePixelSize, setPagePixelSize] = useState({ width: 1, height: 1 });
   const drawStroke = useRef<Stroke | null>(null);
   const canvasWidth = Math.round(fitWidth * zoom);
+  const normalizedOverlayStrokes = useMemo(
+    () => normalizeStrokesToUnitBox(overlayStrokes, pagePixelSize.width, pagePixelSize.height),
+    [overlayStrokes, pagePixelSize.height, pagePixelSize.width]
+  );
 
   useEffect(() => {
     const element = pageRef.current;
@@ -1271,8 +1376,15 @@ function ReaderPage({
       const textLayerElement = textLayerRef.current;
       const context = canvas.getContext("2d");
       if (!context) return;
-      canvas.width = Math.floor(viewport.width * dpr);
-      canvas.height = Math.floor(viewport.height * dpr);
+      const nextPixelWidth = Math.max(1, Math.floor(viewport.width * dpr));
+      const nextPixelHeight = Math.max(1, Math.floor(viewport.height * dpr));
+      canvas.width = nextPixelWidth;
+      canvas.height = nextPixelHeight;
+      setPagePixelSize((current) => (
+        current.width === nextPixelWidth && current.height === nextPixelHeight
+          ? current
+          : { width: nextPixelWidth, height: nextPixelHeight }
+      ));
       canvas.style.width = `${Math.round(viewport.width)}px`;
       canvas.style.height = `${Math.round(viewport.height)}px`;
       surface.style.width = `${Math.round(viewport.width)}px`;
@@ -1400,7 +1512,7 @@ function ReaderPage({
             <canvas ref={canvasRef} />
             <div className="textLayer" ref={textLayerRef} />
             <svg className="scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{strokes.map((stroke, idx) => <polyline key={idx} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
-            <svg className="scribble-layer getting-started-scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{overlayStrokes.map((stroke, idx) => <polyline key={`overlay-${idx}`} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
+            <svg className="scribble-layer getting-started-scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{normalizedOverlayStrokes.map((stroke, idx) => <polyline key={`overlay-${idx}`} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.0015, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
             {captureRect && <div className="area-capture-rect" style={captureRect} />}
           </>
         ) : (
@@ -1486,6 +1598,27 @@ function bestSelectionText(primary: string, fallback: string) {
   return normalizeText(fallbackText).length > normalizeText(primaryText).length ? fallbackText : primaryText;
 }
 
+function normalizeStrokesToUnitBox(strokes: Stroke[], pixelWidth: number, pixelHeight: number): Stroke[] {
+  if (strokes.length === 0) return strokes;
+  const points = strokes.flatMap((stroke) => stroke.points);
+  const alreadyNormalized = points.every((point) => point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1);
+  if (alreadyNormalized) return strokes;
+
+  const maxX = Math.max(...points.map((point) => Math.abs(point.x)), 1);
+  const maxY = Math.max(...points.map((point) => Math.abs(point.y)), 1);
+  const looksLikePercent = maxX <= 100 && maxY <= 100;
+  const xDivisor = looksLikePercent ? 100 : Math.max(1, pixelWidth);
+  const yDivisor = looksLikePercent ? 100 : Math.max(1, pixelHeight);
+
+  return strokes.map((stroke) => ({
+    ...stroke,
+    points: stroke.points.map((point) => ({
+      x: clamp(point.x / xDivisor, 0, 1),
+      y: clamp(point.y / yDivisor, 0, 1)
+    }))
+  }));
+}
+
 function isAiNote(highlight: Highlight) {
   return highlight.anchor?.type === "ai_note" || (highlight.color === "blue" && highlight.selected_text.startsWith("AI note on page "));
 }
@@ -1552,6 +1685,58 @@ function captureCanvasRegion(canvas: HTMLCanvasElement, rect: { left: number; to
     page,
     label: `Screenshot from page ${page}`
   };
+}
+
+function createCoordinateGuideScreenshot(pageCanvas: HTMLCanvasElement) {
+  const guideCanvas = document.createElement("canvas");
+  guideCanvas.width = Math.max(1, pageCanvas.width);
+  guideCanvas.height = Math.max(1, pageCanvas.height);
+  const context = guideCanvas.getContext("2d");
+  if (!context) return { dataUrl: pageCanvas.toDataURL("image/png"), width: pageCanvas.width, height: pageCanvas.height };
+
+  const width = guideCanvas.width;
+  const height = guideCanvas.height;
+  context.drawImage(pageCanvas, 0, 0);
+  context.save();
+  context.lineWidth = Math.max(1, Math.round(Math.min(width, height) / 700));
+  context.font = `${Math.max(16, Math.round(Math.min(width, height) / 38))}px Inter, system-ui, sans-serif`;
+  context.textBaseline = "top";
+  for (let index = 0; index <= 10; index += 1) {
+    const ratio = index / 10;
+    const x = Math.round(width * ratio);
+    const y = Math.round(height * ratio);
+    const major = index % 5 === 0;
+    context.strokeStyle = major ? "rgba(232, 93, 79, 0.46)" : "rgba(47, 143, 131, 0.24)";
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, height);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+    if (index > 0 && index < 10) {
+      drawGuideLabel(context, ratio.toFixed(1), x + 4, 4);
+      drawGuideLabel(context, ratio.toFixed(1), 4, y + 4);
+    }
+  }
+  context.lineWidth = Math.max(3, Math.round(Math.min(width, height) / 320));
+  context.strokeStyle = "rgba(232, 93, 79, 0.72)";
+  context.strokeRect(0, 0, width, height);
+  drawGuideLabel(context, "(0,0)", 8, 8);
+  drawGuideLabel(context, "(1,1)", Math.max(8, width - 112), Math.max(8, height - 42));
+  context.restore();
+
+  return { dataUrl: guideCanvas.toDataURL("image/png"), width, height };
+}
+
+function drawGuideLabel(context: CanvasRenderingContext2D, text: string, x: number, y: number) {
+  const metrics = context.measureText(text);
+  const height = Number.parseInt(context.font, 10) || 16;
+  context.fillStyle = "rgba(255, 255, 255, 0.78)";
+  context.fillRect(x - 3, y - 2, metrics.width + 6, height + 5);
+  context.fillStyle = "rgba(122, 34, 26, 0.88)";
+  context.fillText(text, x, y);
 }
 
 function hexToRgba(hex: string, alpha: number) {
