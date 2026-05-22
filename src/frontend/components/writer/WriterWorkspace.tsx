@@ -544,7 +544,7 @@ export default function WriterWorkspace() {
             )}
             {assistantMessages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`writer-coach-message ${message.role}`}>
-                <MarkdownText text={message.content} />
+                <MarkdownText text={formatCoachMessageContent(message.content)} />
               </div>
             ))}
             {assistantBusy && <div className="writer-coach-message assistant">Reviewing the draft...</div>}
@@ -584,6 +584,35 @@ export default function WriterWorkspace() {
       </aside>
     </section>
   );
+}
+
+
+function formatCoachMessageContent(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return content;
+
+  const tryExtractAnswer = (value: unknown): string | null => {
+    if (!value || typeof value !== "object") return null;
+    const answer = (value as { answer?: unknown }).answer;
+    return typeof answer === "string" && answer.trim() ? answer.trim() : null;
+  };
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const answer = tryExtractAnswer(parsed);
+    if (answer) return answer;
+    if (typeof parsed === "string") {
+      const nested = parsed.trim();
+      if (!nested) return content;
+      const nestedParsed = JSON.parse(nested) as unknown;
+      const nestedAnswer = tryExtractAnswer(nestedParsed);
+      if (nestedAnswer) return nestedAnswer;
+    }
+  } catch {
+    return content;
+  }
+
+  return content;
 }
 
 function buildTextOperations(baseText: string, nextText: string) {
