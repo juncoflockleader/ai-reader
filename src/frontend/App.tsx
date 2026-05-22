@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Brain, Library, PanelRightOpen, PenLine, Settings, Sparkles, StickyNote, Upload, X } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, Library, Network, PanelRightOpen, PenLine, Settings, StickyNote, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
@@ -9,11 +9,12 @@ import ProviderSettings from "./components/settings/ProviderSettings";
 import NotesManager from "./components/notes/NotesManager";
 import WriterWorkspace from "./components/writer/WriterWorkspace";
 import AlgorithmLabWorkspace from "./components/algolab/AlgorithmLabWorkspace";
+import DistributedAlgorithmsWorkspace from "./components/distributed/DistributedAlgorithmsWorkspace";
 
 
 const ASSISTANT_MIN_WIDTH_PX = 360;
 const SPLITTER_WIDTH_PX = 8;
-type StudyApp = "reader" | "writer" | "algolab";
+type StudyApp = "reader" | "writer" | "algolab" | "distlab";
 
 function clampLeftPanePercent(percent: number, workspaceWidth: number) {
   if (!Number.isFinite(percent)) return 72;
@@ -30,7 +31,7 @@ function isMarkdownBook(book: Book | null) {
 export default function App() {
   const [activeApp, setActiveApp] = useState<StudyApp>(() => {
     const saved = localStorage.getItem("studysuite:activeApp");
-    return saved === "writer" || saved === "algolab" ? saved : "reader";
+    return saved === "writer" || saved === "algolab" || saved === "distlab" ? saved : "reader";
   });
   const [startOpen, setStartOpen] = useState(() => localStorage.getItem("studysuite:startDismissed") !== "1");
   const [books, setBooks] = useState<Book[]>([]);
@@ -207,14 +208,14 @@ export default function App() {
                 <ArrowRight size={16} />
               </button>
 
-              <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
-                <span className="start-choice-icon"><Sparkles size={18} /></span>
+              <button className="start-choice start-choice-primary" onClick={() => chooseApp("distlab")}>
+                <span className="start-choice-icon"><Network size={18} /></span>
                 <span className="start-choice-content">
-                  <strong>Practice Coach</strong>
-                  <small>Personalized drills and spaced repetition to reinforce what you learn.</small>
+                  <strong>Distributed Lab</strong>
+                  <small>Visualize node states, channels, clocks, faults, recovery, and randomized runs.</small>
                 </span>
-                <span className="start-pill">Coming soon</span>
-              </article>
+                <ArrowRight size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -224,7 +225,7 @@ export default function App() {
           <div className="brand">
             <span className="brand-wordmark" aria-label="Study Reader">
               <strong>Study</strong>
-              <em>{activeApp === "writer" ? "Writer" : activeApp === "algolab" ? "Lab" : "Reader"}</em>
+              <em>{activeApp === "writer" ? "Writer" : activeApp === "algolab" ? "Lab" : activeApp === "distlab" ? "Systems" : "Reader"}</em>
             </span>
           </div>
           <div className="app-switcher" aria-label="App switcher">
@@ -236,6 +237,9 @@ export default function App() {
             </button>
             <button className={activeApp === "algolab" ? "active" : ""} onClick={() => switchApp("algolab")} title="Algorithm Lab">
               <Brain size={16} />
+            </button>
+            <button className={activeApp === "distlab" ? "active" : ""} onClick={() => switchApp("distlab")} title="Distributed Lab">
+              <Network size={16} />
             </button>
           </div>
           <div id="app-topbar-tools" className="topbar-tools" />
@@ -277,6 +281,8 @@ export default function App() {
         <WriterWorkspace />
       ) : activeApp === "algolab" ? (
         <AlgorithmLabWorkspace />
+      ) : activeApp === "distlab" ? (
+        <DistributedAlgorithmsWorkspace />
       ) : activeBook ? (
         <main
           className={isCompactLayout ? "workspace compact" : "workspace"}

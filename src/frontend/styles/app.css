@@ -3201,6 +3201,507 @@ button:disabled {
   font-size: 12px;
 }
 
+.distlab-workspace {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(460px, 1fr) minmax(320px, 400px);
+  background: #edf1f2;
+}
+
+.distlab-topbar-toolbar {
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.distlab-topbar-toolbar::-webkit-scrollbar {
+  height: 0;
+}
+
+.distlab-stat-failure {
+  border-color: #e2b7a8;
+  background: #fff1ed;
+  color: #74321f;
+}
+
+.distlab-sidebar,
+.distlab-inspector,
+.distlab-stage-panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.distlab-sidebar,
+.distlab-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  padding: 14px;
+  background: #f7f9f8;
+}
+
+.distlab-sidebar {
+  border-right: 1px solid #d1dadd;
+}
+
+.distlab-inspector {
+  border-left: 1px solid #d1dadd;
+}
+
+.distlab-stage-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f6f8f8;
+}
+
+.distlab-select {
+  display: grid;
+}
+
+.distlab-select select,
+.distlab-seed input {
+  min-width: 0;
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #c8d1d5;
+  border-radius: 7px;
+  padding: 7px 9px;
+  background: #fff;
+  color: #263b43;
+  outline: 0;
+}
+
+.distlab-select select:focus,
+.distlab-seed input:focus {
+  border-color: #2d675b;
+  box-shadow: 0 0 0 3px rgba(45, 103, 91, 0.14);
+}
+
+.distlab-slider,
+.distlab-seed {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #53666d;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.distlab-slider input {
+  min-width: 0;
+  accent-color: #2d675b;
+}
+
+.distlab-seed {
+  grid-template-columns: auto minmax(0, 1fr) 34px;
+}
+
+.distlab-seed button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #e7eeec;
+  color: #40575d;
+}
+
+.distlab-saved-list {
+  display: grid;
+  gap: 8px;
+}
+
+.distlab-saved-run {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.distlab-saved-run.active {
+  border-color: #2d675b;
+  background: #e8f3ef;
+}
+
+.distlab-saved-run > button:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  background: transparent;
+  color: #263b43;
+  text-align: left;
+}
+
+.distlab-saved-run strong,
+.distlab-saved-run span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.distlab-saved-run span {
+  color: #65767b;
+  font-size: 12px;
+}
+
+.distlab-visual-wrap {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 18px;
+}
+
+.distlab-visual {
+  width: min(100%, 980px);
+  min-width: 620px;
+  height: auto;
+  display: block;
+  border: 1px solid #d7dde0;
+  border-radius: 8px;
+  background:
+    linear-gradient(#eef4f3 1px, transparent 1px),
+    linear-gradient(90deg, #eef4f3 1px, transparent 1px),
+    #fff;
+  background-size: 28px 28px;
+  box-shadow: 0 14px 34px rgba(36, 54, 61, 0.11);
+}
+
+.distlab-channel line {
+  stroke: #b9c8cc;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.distlab-channel.active line {
+  stroke: #b9782f;
+  stroke-width: 4;
+}
+
+.distlab-channel.delayed line {
+  stroke: #7d8fbd;
+  stroke-dasharray: 8 7;
+}
+
+.distlab-channel.dropping line,
+.distlab-channel.partitioned line {
+  stroke: #bf6b58;
+  stroke-dasharray: 5 6;
+}
+
+.distlab-channel.duplicating line {
+  stroke: #9b78ac;
+  stroke-dasharray: 12 5 3 5;
+}
+
+.distlab-channel text {
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 4px;
+  fill: #53666d;
+  font-size: 11px;
+  font-weight: 780;
+  text-anchor: middle;
+}
+
+.distlab-message circle {
+  fill: #fff8e8;
+  stroke: #b9782f;
+  stroke-width: 2;
+}
+
+.distlab-message.delayed circle {
+  fill: #eef2ff;
+  stroke: #6078bf;
+}
+
+.distlab-message.dropped circle {
+  fill: #fff1ed;
+  stroke: #b5482f;
+}
+
+.distlab-message text {
+  fill: #513812;
+  font-size: 11px;
+  font-weight: 820;
+  text-anchor: middle;
+}
+
+.distlab-node-halo {
+  fill: #fff;
+  stroke: #d4dddd;
+  stroke-width: 2;
+}
+
+.distlab-node.active .distlab-node-halo {
+  fill: #fff8e8;
+  stroke: #b9782f;
+  stroke-dasharray: 5 5;
+  stroke-width: 3;
+}
+
+.distlab-node.failed {
+  opacity: 0.55;
+}
+
+.distlab-node.failed .distlab-node-core {
+  fill: #9a9a9a;
+}
+
+.distlab-node.recovering .distlab-node-halo {
+  stroke: #6078bf;
+  stroke-width: 3;
+}
+
+.distlab-node-core {
+  stroke: rgba(22, 36, 43, 0.18);
+  stroke-width: 2;
+}
+
+.distlab-node-label {
+  fill: #fff;
+  font-size: 15px;
+  font-weight: 820;
+  text-anchor: middle;
+}
+
+.distlab-node-clock {
+  fill: #53666d;
+  font-size: 11px;
+  font-weight: 760;
+  text-anchor: middle;
+}
+
+.distlab-step-message span {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.distlab-detail-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.distlab-timeline-panel {
+  flex: 0 0 clamp(220px, 28%, 320px);
+  min-height: 220px;
+}
+
+.distlab-timeline {
+  max-height: 270px;
+}
+
+.distlab-timeline button.warning {
+  border-color: #dfc37a;
+  background: #fffaf0;
+}
+
+.distlab-timeline button.failure {
+  border-color: #e2b7a8;
+  background: #fff1ed;
+}
+
+.distlab-timeline button.ok > span {
+  background: #e8f3ef;
+  color: #2d675b;
+}
+
+.distlab-node-list,
+.distlab-channel-list,
+.distlab-diagnostic-list {
+  display: grid;
+  gap: 8px;
+}
+
+.distlab-state-row,
+.distlab-channel-row,
+.distlab-diagnostic {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #dbe4e3;
+  border-radius: 8px;
+  background: #f8faf9;
+}
+
+.distlab-state-row.active,
+.distlab-channel-row.active {
+  border-color: #dfc37a;
+  background: #fffaf0;
+}
+
+.distlab-state-row header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.distlab-state-row header span {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+}
+
+.distlab-state-row strong,
+.distlab-channel-row strong,
+.distlab-diagnostic strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #263d44;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.distlab-state-row small,
+.distlab-channel-row small,
+.distlab-channel-row span,
+.distlab-diagnostic span,
+.distlab-diagnostic p,
+.distlab-kv-grid span {
+  color: #697b80;
+  font-size: 12px;
+}
+
+.distlab-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.distlab-kv-grid span {
+  min-width: 0;
+  overflow: hidden;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: #edf3f4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.distlab-channel-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.distlab-memory-list {
+  display: grid;
+  gap: 7px;
+}
+
+.distlab-memory-list span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #dbe4e3;
+  border-radius: 7px;
+  background: #f8faf9;
+}
+
+.distlab-memory-list strong,
+.distlab-memory-list em,
+.distlab-memory-list small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.distlab-memory-list strong {
+  color: #263d44;
+  font-size: 12px;
+}
+
+.distlab-memory-list em,
+.distlab-memory-list small {
+  color: #697b80;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.distlab-diagnostic {
+  border-left: 4px solid #7ca284;
+}
+
+.distlab-diagnostic.warning {
+  border-left-color: #b9782f;
+  background: #fffaf0;
+}
+
+.distlab-diagnostic.failure {
+  border-left-color: #b5482f;
+  background: #fff1ed;
+}
+
+.distlab-diagnostic p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.distlab-stress-report {
+  display: grid;
+  gap: 9px;
+}
+
+.distlab-stress-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.distlab-stress-grid span {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid #dbe4e3;
+  border-radius: 7px;
+  background: #f8faf9;
+}
+
+.distlab-stress-grid strong {
+  color: #263d44;
+  font-size: 16px;
+}
+
+.distlab-stress-grid small {
+  color: #697b80;
+  font-size: 12px;
+}
+
+.distlab-example-list {
+  display: grid;
+  gap: 7px;
+}
+
+.distlab-example-list button {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 7px;
+  background: #edf3f4;
+  color: #40575d;
+  text-align: left;
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;
@@ -3740,6 +4241,28 @@ button:disabled {
 
   .algolab-visual {
     min-width: 540px;
+  }
+
+  .distlab-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(520px, 1fr) auto;
+    overflow: auto;
+  }
+
+  .distlab-sidebar,
+  .distlab-inspector {
+    max-height: none;
+    border: 0;
+  }
+
+  .distlab-stage-panel {
+    min-height: 520px;
+    border-top: 1px solid #d1dadd;
+    border-bottom: 1px solid #d1dadd;
+  }
+
+  .distlab-visual {
+    min-width: 560px;
   }
 }
 
