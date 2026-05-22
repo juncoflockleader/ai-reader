@@ -647,6 +647,17 @@ writerRouter.post("/documents/:id/suggestions/:sid/apply", (req, res, next) => {
       ).run(resolutionNote, appliedAt, suggestion.id);
 
       const updatedSuggestion = fetchSuggestionById(db, document.id, suggestion.id);
+      if (updatedSuggestion) {
+        rebasePendingSuggestionsAfterApply(db, {
+          documentId: document.id,
+          appliedSuggestionId: updatedSuggestion.id,
+          originalRangeStart: suggestion.target_start,
+          originalRangeEnd: suggestion.target_end,
+          insertedText: suggestion.suggested_text,
+          latestTextBeforeApply: latestRevision.full_text,
+          latestTextAfterApply: result.latest_revision.full_text
+        });
+      }
       db.exec("COMMIT");
       transactionOpen = false;
 
@@ -1915,6 +1926,58 @@ function formatSuggestion(suggestion: SuggestionRow) {
     created_at: suggestion.created_at,
     resolved_at: suggestion.resolved_at
   };
+}
+
+function rebasePendingSuggestionsAfterApply(
+  db: DatabaseSync,
+  input: {
+    documentId: string;
+    appliedSuggestionId: string;
+    originalRangeStart: number;
+    originalRangeEnd: number;
+    insertedText: string;
+    latestTextBeforeApply: string;
+    latestTextAfterApply: string;
+  }
+) {
+  const pending = db
+    .prepare(
+      `SELECT * FROM suggestions
+       WHERE document_id = ? AND status = 'pending' AND id <> ?`
+    )
+    .all(input.documentId, input.appliedSuggestionId) as SuggestionRow[];
+  if (pending.length === 0) return;
+
+  const editDelta = input.insertedText.length - (input.originalRangeEnd - input.originalRangeStart);
+  const updateOffsets = db.prepare("UPDATE suggestions SET target_start = ?, target_end = ? WHERE id = ?");
+
+  for (const suggestion of pending) {
+    let mappedStart = suggestion.target_start;
+    let mappedEnd = suggestion.target_end;
+
+    if (suggestion.target_end <= input.originalRangeStart) {
+      // Suggestion is entirely before the applied edit.
+    } else if (suggestion.target_start >= input.originalRangeEnd) {
+      mappedStart += editDelta;
+      mappedEnd += editDelta;
+    } else {
+      continue;
+    }
+
+    const beforeSlice = input.latestTextBeforeApply.slice(suggestion.target_start, suggestion.target_end);
+    if (beforeSlice !== suggestion.original_text) {
+      continue;
+    }
+    const afterSlice = input.latestTextAfterApply.slice(mappedStart, mappedEnd);
+    if (afterSlice !== suggestion.original_text) {
+      continue;
+    }
+    if (mappedStart === suggestion.target_start && mappedEnd === suggestion.target_end) {
+      continue;
+    }
+
+    updateOffsets.run(mappedStart, mappedEnd, suggestion.id);
+  }
 }
 
 function normalizeEditOperations(value: unknown, defaultSource: EditSource) {
