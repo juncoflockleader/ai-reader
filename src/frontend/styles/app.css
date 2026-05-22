@@ -612,10 +612,6 @@ button:disabled {
   pointer-events: none;
 }
 
-.getting-started-scribble-layer {
-  z-index: 4;
-}
-
 .area-capture-rect {
   position: absolute;
   z-index: 3;
@@ -2200,6 +2196,1011 @@ button:disabled {
   font-weight: 760;
 }
 
+.algolab-workspace {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(460px, 1fr) minmax(300px, 380px);
+  background: #edf1f2;
+}
+
+.algolab-topbar-toolbar {
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.algolab-topbar-toolbar::-webkit-scrollbar {
+  height: 0;
+}
+
+.algolab-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #cbd6d7;
+  border-radius: 7px;
+  background: #fff;
+  color: #52676d;
+}
+
+.algolab-speed input {
+  width: 110px;
+  accent-color: #2d675b;
+}
+
+.algolab-sidebar,
+.algolab-inspector,
+.algolab-stage-panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.algolab-sidebar,
+.algolab-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  padding: 14px;
+  background: #f7f9f8;
+}
+
+.algolab-sidebar {
+  border-right: 1px solid #d1dadd;
+}
+
+.algolab-inspector {
+  border-left: 1px solid #d1dadd;
+}
+
+.algolab-panel {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 12px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.algolab-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #263b43;
+}
+
+.algolab-panel-title strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algolab-choice-list {
+  display: grid;
+  gap: 8px;
+}
+
+.algolab-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #f4f7f7;
+}
+
+.algolab-mode-switch button {
+  min-height: 30px;
+  border-radius: 6px;
+  background: transparent;
+  color: #52676d;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.algolab-mode-switch button.active {
+  background: #fff;
+  color: #254840;
+  box-shadow: 0 1px 4px rgba(36, 54, 61, 0.12);
+}
+
+.algolab-choice {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fbfcfc;
+  color: #263b43;
+  text-align: left;
+}
+
+.algolab-choice.active {
+  border-color: #2d675b;
+  background: #e8f3ef;
+}
+
+.algolab-choice strong,
+.algolab-choice span {
+  min-width: 0;
+}
+
+.algolab-choice span {
+  color: #65767b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.algolab-input {
+  min-height: 78px;
+  resize: vertical;
+  border: 1px solid #c8d1d5;
+  border-radius: 7px;
+  padding: 10px;
+  background: #fff;
+  color: #1d2b31;
+  outline: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.algolab-input:focus {
+  border-color: #2d675b;
+  box-shadow: 0 0 0 3px rgba(45, 103, 91, 0.14);
+}
+
+.algolab-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.algolab-preset-row button {
+  min-height: 30px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: #edf3f4;
+  color: #40575d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.algolab-code-panel {
+  min-height: 220px;
+}
+
+.algolab-instrument-panel {
+  min-height: 260px;
+}
+
+.algolab-code-draft {
+  min-height: 170px;
+  resize: vertical;
+  border: 1px solid #c8d1d5;
+  border-radius: 7px;
+  padding: 10px;
+  background: #fff;
+  color: #1d2b31;
+  outline: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.48;
+}
+
+.algolab-code-draft:focus {
+  border-color: #2d675b;
+  box-shadow: 0 0 0 3px rgba(45, 103, 91, 0.14);
+}
+
+.algolab-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.algolab-action-row button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: #edf3f4;
+  color: #40575d;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.algolab-action-row button:first-child {
+  background: #2d675b;
+  color: #fff;
+}
+
+.algolab-action-row button:disabled {
+  opacity: 0.58;
+}
+
+.algolab-status,
+.algolab-warning-list span {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #dbe4e3;
+  border-radius: 7px;
+  background: #f8faf9;
+  color: #53686e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.algolab-warning-list {
+  display: grid;
+  gap: 6px;
+}
+
+.algolab-warning-list span {
+  border-color: #dfc37a;
+  background: #fff8e8;
+  color: #6e4813;
+}
+
+.algolab-code {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 0 8px 42px;
+  border: 1px solid #e0e7e6;
+  border-radius: 8px;
+  background: #f8faf9;
+  color: #405259;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.algolab-code li {
+  padding: 0 10px 0 4px;
+}
+
+.algolab-code li::marker {
+  color: #87979b;
+}
+
+.algolab-code li.active {
+  background: #fff2ce;
+  color: #513812;
+}
+
+.algolab-code code {
+  white-space: pre;
+}
+
+.algolab-stage-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f6f8f8;
+}
+
+.algolab-stage-header {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid #d8e0df;
+  background: #fbfcfc;
+}
+
+.algolab-stage-header h1 {
+  margin: 2px 0 0;
+  color: #20343c;
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.algolab-visual-wrap {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 18px;
+}
+
+.algolab-visual {
+  width: min(100%, 980px);
+  min-width: 600px;
+  height: auto;
+  display: block;
+  border: 1px solid #d7dde0;
+  border-radius: 8px;
+  background:
+    linear-gradient(#eef4f3 1px, transparent 1px),
+    linear-gradient(90deg, #eef4f3 1px, transparent 1px),
+    #fff;
+  background-size: 28px 28px;
+  box-shadow: 0 14px 34px rgba(36, 54, 61, 0.11);
+}
+
+.algolab-lane-label,
+.algolab-slot-index,
+.algolab-range-label,
+.algolab-pointer text,
+.algolab-item-id {
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.algolab-lane-label {
+  fill: #63757c;
+  text-transform: uppercase;
+}
+
+.algolab-slot-line {
+  stroke: #c7d2d5;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.algolab-slot-index {
+  fill: #87979b;
+  text-anchor: middle;
+}
+
+.algolab-range {
+  fill: rgba(238, 246, 247, 0.58);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+
+.algolab-range-label-bg {
+  fill: #fff;
+  stroke-width: 1.5;
+}
+
+.algolab-pointer text {
+  text-anchor: middle;
+}
+
+.algolab-range-label {
+  text-anchor: start;
+}
+
+.algolab-item {
+  transition: transform 0.24s ease;
+}
+
+.algolab-item circle {
+  stroke: rgba(22, 36, 43, 0.18);
+  stroke-width: 2;
+  transition: stroke-width 0.18s ease, filter 0.18s ease;
+}
+
+.algolab-item.comparing circle {
+  stroke: #1b2930;
+  stroke-width: 5;
+}
+
+.algolab-item.moved circle {
+  filter: drop-shadow(0 8px 10px rgba(181, 72, 47, 0.28));
+}
+
+.algolab-item.sorted circle {
+  stroke: #2d675b;
+  stroke-width: 4;
+}
+
+.algolab-compare-arc {
+  pointer-events: none;
+}
+
+.algolab-compare-arc path {
+  fill: none;
+  stroke: #b9782f;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.algolab-compare-arc circle {
+  fill: #fff8e8;
+  stroke: #b9782f;
+  stroke-width: 2;
+}
+
+.algolab-compare-arc rect {
+  fill: #fff8e8;
+  stroke: #dfc37a;
+  stroke-width: 1;
+}
+
+.algolab-compare-arc text {
+  fill: #5b4213;
+  font-size: 12px;
+  font-weight: 820;
+  text-anchor: middle;
+}
+
+.algolab-item-value {
+  fill: #fff;
+  font-size: 17px;
+  font-weight: 780;
+  text-anchor: middle;
+}
+
+.algolab-item-id {
+  fill: #53666d;
+  text-anchor: middle;
+}
+
+.algolab-tree-visual {
+  min-width: 680px;
+}
+
+.algolab-tree-edge {
+  fill: none;
+  stroke: #c5d3d4;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.algolab-tree-edge.visited {
+  stroke: #77a37e;
+}
+
+.algolab-tree-focus circle {
+  fill: rgba(185, 120, 47, 0.12);
+  stroke: #b9782f;
+  stroke-dasharray: 5 5;
+  stroke-width: 2;
+}
+
+.algolab-tree-node-ring {
+  fill: #fff;
+  stroke: #d4dddd;
+  stroke-width: 2;
+}
+
+.algolab-tree-node.active .algolab-tree-node-ring {
+  stroke: #b9782f;
+  stroke-width: 3;
+}
+
+.algolab-tree-node.visited .algolab-tree-node-ring {
+  stroke: #2d675b;
+  stroke-width: 3;
+}
+
+.algolab-tree-node-core {
+  stroke: rgba(22, 36, 43, 0.18);
+  stroke-width: 2;
+}
+
+.algolab-tree-node-value,
+.algolab-tree-order-value,
+.algolab-tree-visit-badge text {
+  fill: #fff;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.algolab-tree-node-value {
+  font-size: 17px;
+}
+
+.algolab-tree-node-id {
+  fill: #53666d;
+  font-size: 12px;
+  font-weight: 720;
+  text-anchor: middle;
+}
+
+.algolab-tree-visit-badge circle {
+  fill: #2d675b;
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.algolab-tree-visit-badge text {
+  font-size: 10px;
+}
+
+.algolab-tree-order-label {
+  fill: #53666d;
+  font-size: 12px;
+  font-weight: 820;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.algolab-tree-order-value {
+  font-size: 13px;
+}
+
+.algolab-tree-order-empty {
+  fill: #87979b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.algolab-scrubber {
+  flex: 0 0 auto;
+  width: calc(100% - 44px);
+  margin: 0 22px 18px;
+  accent-color: #2d675b;
+}
+
+.algolab-empty-state {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #63757c;
+  text-align: center;
+}
+
+.algolab-empty-state h1 {
+  margin: 0;
+  color: #263b43;
+  font-size: 22px;
+}
+
+.algolab-empty-state p {
+  margin: 0;
+}
+
+.algolab-step-panel {
+  flex: 0 0 clamp(220px, 28%, 268px);
+  min-height: 220px;
+}
+
+.algolab-step-message {
+  display: grid;
+  grid-template-rows: 16px minmax(52px, 1fr);
+  align-content: start;
+  gap: 7px;
+  min-height: 96px;
+  padding: 10px;
+  border: 1px solid #d8e0df;
+  border-left: 4px solid #b9782f;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #25383f;
+}
+
+.algolab-step-message span {
+  min-height: 16px;
+  display: inline-flex;
+  align-items: center;
+  color: #6d4b00;
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.algolab-step-message p {
+  max-height: 64px;
+  overflow: auto;
+  margin: 0;
+  line-height: 1.45;
+  scrollbar-width: thin;
+}
+
+.algolab-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(54px, 1fr));
+  gap: 8px;
+}
+
+.algolab-detail-grid span {
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border: 1px solid #dbe4e3;
+  border-radius: 7px;
+  background: #f7faf9;
+}
+
+.algolab-detail-grid strong,
+.algolab-detail-grid small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algolab-detail-grid strong {
+  color: #263d44;
+  font-size: 14px;
+}
+
+.algolab-detail-grid small {
+  color: #697b80;
+  font-size: 12px;
+}
+
+.algolab-execution-panel {
+  flex: 0 0 auto;
+}
+
+.algolab-execution {
+  display: grid;
+  gap: 10px;
+}
+
+.algolab-loop-list {
+  display: grid;
+  gap: 8px;
+}
+
+.algolab-loop-progress {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #dbe4e3;
+  border-left: 4px solid #6078bf;
+  border-radius: 8px;
+  background: #f8faf9;
+}
+
+.algolab-loop-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.algolab-loop-row strong,
+.algolab-loop-row span,
+.algolab-loop-progress small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algolab-loop-row strong {
+  color: #263d44;
+  font-size: 13px;
+}
+
+.algolab-loop-row span {
+  color: #596f75;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.algolab-loop-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eceb;
+}
+
+.algolab-loop-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.22s ease;
+}
+
+.algolab-loop-progress small {
+  color: #697b80;
+  font-size: 12px;
+}
+
+.algolab-call-window {
+  position: absolute;
+  z-index: 8;
+  min-width: 280px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #b9c9c8;
+  border-radius: 8px;
+  background: #fbfcfc;
+  box-shadow: 0 18px 42px rgba(24, 40, 46, 0.22);
+}
+
+.algolab-call-window-header {
+  flex: 0 0 auto;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid #d9e2e1;
+  background: #f6faf9;
+  color: #263d44;
+  cursor: grab;
+  user-select: none;
+}
+
+.algolab-call-window-header:active {
+  cursor: grabbing;
+}
+
+.algolab-call-window-header > div {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.algolab-call-window-header strong,
+.algolab-call-window-header span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algolab-call-window-header strong {
+  font-size: 13px;
+}
+
+.algolab-call-window-header span {
+  color: #63757c;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.algolab-call-tree-window-canvas {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px;
+  background:
+    linear-gradient(#eef4f3 1px, transparent 1px),
+    linear-gradient(90deg, #eef4f3 1px, transparent 1px),
+    #fbfcfc;
+  background-size: 24px 24px;
+}
+
+.algolab-call-window-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 0;
+  background: transparent;
+  cursor: nwse-resize;
+}
+
+.algolab-call-window-resize::before {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #8ca2a2;
+  border-bottom: 2px solid #8ca2a2;
+}
+
+.algolab-call-tree-section {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.algolab-call-tree-header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.algolab-call-tree-header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #263d44;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algolab-call-tree-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.algolab-call-tree-toolbar .tool-button {
+  width: 30px;
+  height: 30px;
+}
+
+.algolab-call-tree-toolbar span {
+  width: 42px;
+  color: #63757c;
+  font-size: 12px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.algolab-call-tree {
+  max-height: 360px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #dbe4e3;
+  border-radius: 8px;
+  background:
+    linear-gradient(#eef4f3 1px, transparent 1px),
+    linear-gradient(90deg, #eef4f3 1px, transparent 1px),
+    #fbfcfc;
+  background-size: 24px 24px;
+}
+
+.algolab-call-tree svg,
+.algolab-call-tree-window-canvas svg {
+  display: block;
+}
+
+.algolab-call-link {
+  fill: none;
+  stroke: #c7d3d3;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.algolab-call-link.in-stack {
+  stroke: #b9782f;
+  stroke-width: 3;
+}
+
+.algolab-call-node-shape {
+  fill: #fff;
+  stroke: #cbd8d8;
+  stroke-width: 1.4;
+}
+
+.algolab-call-svg-node.active .algolab-call-node-shape {
+  fill: #e8f3ef;
+  stroke: #2d675b;
+  stroke-width: 2;
+}
+
+.algolab-call-svg-node.in-stack .algolab-call-node-shape {
+  fill: #fffdf5;
+  stroke: #dfc37a;
+}
+
+.algolab-call-svg-node.complete .algolab-call-node-shape {
+  fill: #f6f8f8;
+}
+
+.algolab-call-node-label,
+.algolab-call-node-detail,
+.algolab-call-node-status {
+  dominant-baseline: middle;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  pointer-events: none;
+}
+
+.algolab-call-node-label {
+  fill: #263d44;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.algolab-call-node-detail {
+  fill: #697b80;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.algolab-call-svg-node.complete .algolab-call-node-label,
+.algolab-call-svg-node.complete .algolab-call-node-detail {
+  fill: #66797f;
+}
+
+.algolab-call-node-badge {
+  fill: #edf3f4;
+}
+
+.algolab-call-svg-node.active .algolab-call-node-badge {
+  fill: #2d675b;
+}
+
+.algolab-call-svg-node.in-stack .algolab-call-node-badge {
+  fill: #fff3cf;
+}
+
+.algolab-call-node-status {
+  fill: #63757c;
+  font-size: 9px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.algolab-call-svg-node.active .algolab-call-node-status {
+  fill: #fff;
+}
+
+.algolab-timeline-panel {
+  flex: 1;
+  min-height: 220px;
+}
+
+.algolab-timeline {
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+  display: grid;
+  gap: 7px;
+}
+
+.algolab-timeline button {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px 8px;
+  align-items: start;
+  padding: 8px;
+  border: 1px solid #d8e0df;
+  border-radius: 8px;
+  background: #fbfcfc;
+  color: #30464d;
+  text-align: left;
+}
+
+.algolab-timeline button.active {
+  border-color: #2d675b;
+  background: #e8f3ef;
+}
+
+.algolab-timeline button > span {
+  grid-row: span 2;
+  width: 28px;
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #e7eeec;
+  color: #40575d;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.algolab-timeline strong,
+.algolab-timeline small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.algolab-timeline small {
+  color: #65767b;
+  font-size: 12px;
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;
@@ -2293,6 +3294,44 @@ button:disabled {
   background: #e5f1ed;
   color: #204b43;
   box-shadow: inset 0 0 0 1px rgba(45, 103, 91, 0.16);
+}
+
+.settings-modal .provider-switch .provider-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding-inline: 10px;
+  text-align: left;
+}
+
+.settings-modal .provider-switch .provider-choice span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.provider-icon-openai {
+  color: #1f2a2e;
+}
+
+.provider-icon-anthropic {
+  color: #c15f3c;
+}
+
+.provider-icon-deepseek {
+  color: #3566d6;
+}
+
+.provider-icon-doubao {
+  color: #5f55d9;
 }
 
 .provider-box h3 {
@@ -2679,6 +3718,28 @@ button:disabled {
     min-height: 520px;
     border-top: 1px solid #d1dadd;
     border-bottom: 1px solid #d1dadd;
+  }
+
+  .algolab-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(520px, 1fr) auto;
+    overflow: auto;
+  }
+
+  .algolab-sidebar,
+  .algolab-inspector {
+    max-height: none;
+    border: 0;
+  }
+
+  .algolab-stage-panel {
+    min-height: 520px;
+    border-top: 1px solid #d1dadd;
+    border-bottom: 1px solid #d1dadd;
+  }
+
+  .algolab-visual {
+    min-width: 540px;
   }
 }
 

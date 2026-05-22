@@ -47,7 +47,7 @@ export type ChatAttachment = {
   label: string;
 };
 
-export type ProviderId = "openai" | "anthropic";
+export type ProviderId = "openai" | "anthropic" | "deepseek" | "doubao";
 export type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
 
 export type ModelChoice = {
@@ -63,6 +63,14 @@ export type AppSettings = {
   privacyAcknowledged: boolean;
   keyStorageWarning: string;
   models: Record<ProviderId, string[]>;
+};
+
+export type AlgorithmInstrumentationResponse = {
+  instrumentedCode: string;
+  summary: string;
+  warnings: string[];
+  provider: ProviderId;
+  model: string;
 };
 
 export type WriterDocument = {

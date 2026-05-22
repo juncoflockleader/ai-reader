@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { DatabaseSync } from "node:sqlite";
-import { getProvider, normalizeModel } from "../services/llm";
+import { getProvider, isProviderId, normalizeModel, providerIds, type ProviderId } from "../services/llm";
 import { getWriterDb } from "../services/writer/db";
 import { id, json, nowIso, parseJson } from "../services/storage/db";
 import { getApiKey, getAppSettings } from "./settings";
@@ -34,8 +34,6 @@ const CONTEXT_ARTIFACT_POLICIES: Record<WriterContextArtifactType, { staleAfterE
   document_outline: { staleAfterEditCount: 5, staleAfterSeconds: 60 * 60 },
   thesis_state: { staleAfterEditCount: 3, staleAfterSeconds: 60 * 60 }
 };
-
-type ProviderId = "openai" | "anthropic";
 
 type DocumentRow = {
   id: string;
@@ -901,8 +899,8 @@ function normalizeAssistBaseRevisionId(value: unknown, fieldName: string) {
 
 function normalizeOptionalProviderId(value: unknown): ProviderId | null {
   if (value === undefined || value === null || value === "") return null;
-  if (value === "openai" || value === "anthropic") return value;
-  throw createHttpError(400, "provider must be one of: openai, anthropic.");
+  if (isProviderId(value)) return value;
+  throw createHttpError(400, `provider must be one of: ${providerIds.join(", ")}.`);
 }
 
 function normalizeMaxSuggestions(value: unknown) {

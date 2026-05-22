@@ -8,10 +8,12 @@ import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
 import NotesManager from "./components/notes/NotesManager";
 import WriterWorkspace from "./components/writer/WriterWorkspace";
+import AlgorithmLabWorkspace from "./components/algolab/AlgorithmLabWorkspace";
 
 
 const ASSISTANT_MIN_WIDTH_PX = 360;
 const SPLITTER_WIDTH_PX = 8;
+type StudyApp = "reader" | "writer" | "algolab";
 
 function clampLeftPanePercent(percent: number, workspaceWidth: number) {
   if (!Number.isFinite(percent)) return 72;
@@ -26,9 +28,9 @@ function isMarkdownBook(book: Book | null) {
   return Boolean(book?.file_name.toLowerCase().endsWith(".md"));
 }
 export default function App() {
-  const [activeApp, setActiveApp] = useState<"reader" | "writer">(() => {
+  const [activeApp, setActiveApp] = useState<StudyApp>(() => {
     const saved = localStorage.getItem("studysuite:activeApp");
-    return saved === "writer" ? "writer" : "reader";
+    return saved === "writer" || saved === "algolab" ? saved : "reader";
   });
   const [startOpen, setStartOpen] = useState(() => localStorage.getItem("studysuite:startDismissed") !== "1");
   const [books, setBooks] = useState<Book[]>([]);
@@ -155,14 +157,14 @@ export default function App() {
     }
   }
 
-  function chooseApp(app: "reader" | "writer") {
+  function chooseApp(app: StudyApp) {
     setActiveApp(app);
     setStartOpen(false);
     localStorage.setItem("studysuite:activeApp", app);
     localStorage.setItem("studysuite:startDismissed", "1");
   }
 
-  function switchApp(app: "reader" | "writer") {
+  function switchApp(app: StudyApp) {
     setActiveApp(app);
     localStorage.setItem("studysuite:activeApp", app);
   }
@@ -196,8 +198,17 @@ export default function App() {
                 <ArrowRight size={16} />
               </button>
 
-              <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
+              <button className="start-choice start-choice-primary" onClick={() => chooseApp("algolab")}>
                 <span className="start-choice-icon"><Brain size={18} /></span>
+                <span className="start-choice-content">
+                  <strong>Algorithm Lab</strong>
+                  <small>Watch sorting algorithms compare, move, and settle objects step by step.</small>
+                </span>
+                <ArrowRight size={16} />
+              </button>
+
+              <article className="start-choice start-choice-coming-soon" aria-label="More apps coming soon">
+                <span className="start-choice-icon"><Sparkles size={18} /></span>
                 <span className="start-choice-content">
                   <strong>Practice Coach</strong>
                   <small>Personalized drills and spaced repetition to reinforce what you learn.</small>
@@ -213,7 +224,7 @@ export default function App() {
           <div className="brand">
             <span className="brand-wordmark" aria-label="Study Reader">
               <strong>Study</strong>
-              <em>{activeApp === "writer" ? "Writer" : "Reader"}</em>
+              <em>{activeApp === "writer" ? "Writer" : activeApp === "algolab" ? "Lab" : "Reader"}</em>
             </span>
           </div>
           <div className="app-switcher" aria-label="App switcher">
@@ -222,6 +233,9 @@ export default function App() {
             </button>
             <button className={activeApp === "writer" ? "active" : ""} onClick={() => switchApp("writer")} title="AI Writer">
               <PenLine size={16} />
+            </button>
+            <button className={activeApp === "algolab" ? "active" : ""} onClick={() => switchApp("algolab")} title="Algorithm Lab">
+              <Brain size={16} />
             </button>
           </div>
           <div id="app-topbar-tools" className="topbar-tools" />
@@ -261,6 +275,8 @@ export default function App() {
 
       {activeApp === "writer" ? (
         <WriterWorkspace />
+      ) : activeApp === "algolab" ? (
+        <AlgorithmLabWorkspace />
       ) : activeBook ? (
         <main
           className={isCompactLayout ? "workspace compact" : "workspace"}

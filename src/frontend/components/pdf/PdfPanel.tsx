@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Brush, Eraser, Eye, EyeOff, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Brush, Eraser, Eye, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -26,7 +26,7 @@ type PageData = {
 };
 
 type Stroke = { color: string; width: number; points: Array<{ x: number; y: number }> };
-type GettingStartedItem = { summary_text: string; overlay_strokes: Stroke[] };
+type GettingStartedItem = { summary_text: string };
 
 type PdfTextLayer = {
   render: () => Promise<void>;
@@ -92,47 +92,7 @@ function normalizeGettingStartedItem(item: GettingStartedItem): GettingStartedIt
   const summary = parsed && typeof parsed.summary === "string"
     ? parsed.summary
     : (parsed && typeof parsed.summary_text === "string" ? parsed.summary_text : item.summary_text);
-  const rawStrokes = parsed && Array.isArray(parsed.overlay_strokes)
-    ? parsed.overlay_strokes
-    : (parsed && Array.isArray(parsed.strokes) ? parsed.strokes : item.overlay_strokes);
-  const overlayStrokes = coerceStrokes(rawStrokes);
-  return {
-    summary_text: summary,
-    overlay_strokes: overlayStrokes.length > 0 ? overlayStrokes : (summary.trim() ? fallbackGettingStartedStrokes() : [])
-  };
-}
-
-function coerceStrokes(input: unknown): Stroke[] {
-  if (!Array.isArray(input)) return [];
-  return input.flatMap((stroke, strokeIndex) => {
-    if (!stroke || typeof stroke !== "object" || Array.isArray(stroke)) return [];
-    const record = stroke as Record<string, unknown>;
-    const color = typeof record.color === "string" && record.color.trim()
-      ? record.color
-      : fallbackStrokeColors[strokeIndex % fallbackStrokeColors.length];
-    const width = Number(record.width);
-    const points = Array.isArray(record.points)
-      ? record.points.flatMap((point) => {
-        if (!point || typeof point !== "object" || Array.isArray(point)) return [];
-        const pointRecord = point as Record<string, unknown>;
-        const x = Number(pointRecord.x);
-        const y = Number(pointRecord.y);
-        return Number.isFinite(x) && Number.isFinite(y) ? [{ x, y }] : [];
-      })
-      : [];
-    if (points.length < 2) return [];
-    return [{ color, width: clamp(width, 1, 18), points }];
-  });
-}
-
-const fallbackStrokeColors = ["#e85d4f", "#2f8f83", "#f0b429", "#6c63ff"];
-
-function fallbackGettingStartedStrokes(): Stroke[] {
-  return [
-    { color: fallbackStrokeColors[0], width: 5, points: [{ x: 0.12, y: 0.1 }, { x: 0.86, y: 0.1 }] },
-    { color: fallbackStrokeColors[1], width: 3, points: [{ x: 0.12, y: 0.15 }, { x: 0.12, y: 0.29 }, { x: 0.88, y: 0.29 }, { x: 0.88, y: 0.15 }, { x: 0.12, y: 0.15 }] },
-    { color: fallbackStrokeColors[2], width: 4, points: [{ x: 0.16, y: 0.42 }, { x: 0.78, y: 0.42 }] }
-  ];
+  return { summary_text: summary };
 }
 
 function tryParseMaybeJson(text: string): Record<string, unknown> | null {
@@ -146,6 +106,16 @@ function tryParseMaybeJson(text: string): Record<string, unknown> | null {
     }
   }
   return null;
+}
+
+function gettingStartedAdjacentContext(pages: Record<number, PageData>, currentPage: number) {
+  return [currentPage - 1, currentPage + 1]
+    .flatMap((pageNumber) => {
+      const text = pages[pageNumber]?.clean_text?.trim();
+      return text ? [`Page ${pageNumber}:\n${text}`] : [];
+    })
+    .join("\n\n")
+    .slice(0, 12000);
 }
 
 export default function PdfPanel({ book, currentPage, selectedText, onPageChange, onSelectedText, onDraftQuestion, onScreenshot }: Props) {
@@ -167,7 +137,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
   const [showScribbles, setShowScribbles] = useState(true);
   const [drawingsByPage, setDrawingsByPage] = useState<Record<number, Stroke[]>>({});
   const [gettingStartedByPage, setGettingStartedByPage] = useState<Record<number, GettingStartedItem>>({});
-  const [showGettingStartedOverlay, setShowGettingStartedOverlay] = useState(true);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
   const [gettingStartedLoading, setGettingStartedLoading] = useState(false);
   const [gettingStartedError, setGettingStartedError] = useState<string | null>(null);
@@ -1074,7 +1043,6 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               areaCaptureEnabled={areaCaptureEnabled}
               onAreaCaptureComplete={() => setAreaCaptureEnabled(false)}
               strokes={showScribbles ? (drawingsByPage[pageNumber] ?? []) : []}
-              overlayStrokes={showGettingStartedOverlay ? (gettingStartedByPage[pageNumber]?.overlay_strokes ?? []) : []}
               drawEnabled={scribbleEnabled}
               drawColor={scribbleColor}
               eraseMode={scribbleEraser}
@@ -1179,48 +1147,38 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
               <button
                 type="button"
                 className="getting-started-header-button"
-                onClick={() => setShowGettingStartedOverlay((value) => !value)}
-                title={showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}
-                aria-label={showGettingStartedOverlay ? "Hide overlay scribbles" : "Show overlay scribbles"}
-              >
-                {showGettingStartedOverlay ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-              <button
-                type="button"
-                className="getting-started-header-button"
                 title={gettingStartedLoading ? "Generating getting started" : "Generate or refresh getting started"}
                 aria-label={gettingStartedLoading ? "Generating getting started" : "Generate or refresh getting started"}
                 disabled={gettingStartedLoading}
                 onClick={async () => {
-            const pageText = pages[currentPage]?.clean_text ?? "";
-            const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
-            if (!pageCanvas) {
-              setGettingStartedError("Page preview is not ready yet. Try again in a moment.");
-              return;
-            }
-            setGettingStartedLoading(true);
-            setGettingStartedError(null);
-            try {
-              const screenshot = createCoordinateGuideScreenshot(pageCanvas);
-              const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Getting started timed out after 30 seconds.")), 30_000));
-              const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, {
-                method: "POST",
-                body: JSON.stringify({
-                  screenshot_data_url: screenshot.dataUrl,
-                  page_text: pageText,
-                  page_image_width: screenshot.width,
-                  page_image_height: screenshot.height,
-                  coordinate_system: "normalized_page_grid_v1"
-                })
-              });
-              const result = await Promise.race([request, timeout]);
-              setGettingStartedByPage((current) => ({ ...current, [currentPage]: normalizeGettingStartedItem(result.item) }));
-            } catch (error) {
-              setGettingStartedError(error instanceof Error ? error.message : "Could not generate getting started content.");
-            } finally {
-              setGettingStartedLoading(false);
-            }
-              }}>
+                  const pageText = pages[currentPage]?.clean_text ?? "";
+                  const pageContextText = gettingStartedAdjacentContext(pages, currentPage);
+                  const pageCanvas = document.querySelector<HTMLCanvasElement>(`#pdf-page-${currentPage} canvas`);
+                  if (!pageCanvas) {
+                    setGettingStartedError("Page preview is not ready yet. Try again in a moment.");
+                    return;
+                  }
+                  setGettingStartedLoading(true);
+                  setGettingStartedError(null);
+                  try {
+                    const screenshot = pageCanvas.toDataURL("image/png");
+                    const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Getting started timed out after 45 seconds.")), 45_000));
+                    const request = api<{ item: GettingStartedItem }>(`/api/books/${book.id}/getting-started/${currentPage}`, {
+                      method: "POST",
+                      body: JSON.stringify({
+                        screenshot_data_url: screenshot,
+                        page_text: pageText,
+                        page_context_text: pageContextText
+                      })
+                    });
+                    const result = await Promise.race([request, timeout]);
+                    setGettingStartedByPage((current) => ({ ...current, [currentPage]: normalizeGettingStartedItem(result.item) }));
+                  } catch (error) {
+                    setGettingStartedError(error instanceof Error ? error.message : "Could not generate getting started content.");
+                  } finally {
+                    setGettingStartedLoading(false);
+                  }
+                }}>
                 {gettingStartedLoading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
               </button>
               <button
@@ -1291,7 +1249,6 @@ function ReaderPage({
   onAreaCaptureComplete,
   loadText,
   strokes,
-  overlayStrokes,
   drawEnabled,
   drawColor,
   eraseMode,
@@ -1313,7 +1270,6 @@ function ReaderPage({
   onAreaCaptureComplete: () => void;
   loadText: (page: number) => void;
   strokes: Stroke[];
-  overlayStrokes: Stroke[];
   drawEnabled: boolean;
   drawColor: string;
   eraseMode: boolean;
@@ -1326,13 +1282,8 @@ function ReaderPage({
   const dragStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [fitWidth, setFitWidth] = useState(760);
   const [captureRect, setCaptureRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  const [pagePixelSize, setPagePixelSize] = useState({ width: 1, height: 1 });
   const drawStroke = useRef<Stroke | null>(null);
   const canvasWidth = Math.round(fitWidth * zoom);
-  const normalizedOverlayStrokes = useMemo(
-    () => normalizeStrokesToUnitBox(overlayStrokes, pagePixelSize.width, pagePixelSize.height),
-    [overlayStrokes, pagePixelSize.height, pagePixelSize.width]
-  );
 
   useEffect(() => {
     const element = pageRef.current;
@@ -1376,15 +1327,8 @@ function ReaderPage({
       const textLayerElement = textLayerRef.current;
       const context = canvas.getContext("2d");
       if (!context) return;
-      const nextPixelWidth = Math.max(1, Math.floor(viewport.width * dpr));
-      const nextPixelHeight = Math.max(1, Math.floor(viewport.height * dpr));
-      canvas.width = nextPixelWidth;
-      canvas.height = nextPixelHeight;
-      setPagePixelSize((current) => (
-        current.width === nextPixelWidth && current.height === nextPixelHeight
-          ? current
-          : { width: nextPixelWidth, height: nextPixelHeight }
-      ));
+      canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
+      canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
       canvas.style.width = `${Math.round(viewport.width)}px`;
       canvas.style.height = `${Math.round(viewport.height)}px`;
       surface.style.width = `${Math.round(viewport.width)}px`;
@@ -1512,7 +1456,6 @@ function ReaderPage({
             <canvas ref={canvasRef} />
             <div className="textLayer" ref={textLayerRef} />
             <svg className="scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{strokes.map((stroke, idx) => <polyline key={idx} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.001, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
-            <svg className="scribble-layer getting-started-scribble-layer" viewBox="0 0 1 1" preserveAspectRatio="none">{normalizedOverlayStrokes.map((stroke, idx) => <polyline key={`overlay-${idx}`} points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke.color} strokeWidth={Math.max(0.0015, stroke.width / 1000)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
             {captureRect && <div className="area-capture-rect" style={captureRect} />}
           </>
         ) : (
@@ -1598,27 +1541,6 @@ function bestSelectionText(primary: string, fallback: string) {
   return normalizeText(fallbackText).length > normalizeText(primaryText).length ? fallbackText : primaryText;
 }
 
-function normalizeStrokesToUnitBox(strokes: Stroke[], pixelWidth: number, pixelHeight: number): Stroke[] {
-  if (strokes.length === 0) return strokes;
-  const points = strokes.flatMap((stroke) => stroke.points);
-  const alreadyNormalized = points.every((point) => point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1);
-  if (alreadyNormalized) return strokes;
-
-  const maxX = Math.max(...points.map((point) => Math.abs(point.x)), 1);
-  const maxY = Math.max(...points.map((point) => Math.abs(point.y)), 1);
-  const looksLikePercent = maxX <= 100 && maxY <= 100;
-  const xDivisor = looksLikePercent ? 100 : Math.max(1, pixelWidth);
-  const yDivisor = looksLikePercent ? 100 : Math.max(1, pixelHeight);
-
-  return strokes.map((stroke) => ({
-    ...stroke,
-    points: stroke.points.map((point) => ({
-      x: clamp(point.x / xDivisor, 0, 1),
-      y: clamp(point.y / yDivisor, 0, 1)
-    }))
-  }));
-}
-
 function isAiNote(highlight: Highlight) {
   return highlight.anchor?.type === "ai_note" || (highlight.color === "blue" && highlight.selected_text.startsWith("AI note on page "));
 }
@@ -1685,58 +1607,6 @@ function captureCanvasRegion(canvas: HTMLCanvasElement, rect: { left: number; to
     page,
     label: `Screenshot from page ${page}`
   };
-}
-
-function createCoordinateGuideScreenshot(pageCanvas: HTMLCanvasElement) {
-  const guideCanvas = document.createElement("canvas");
-  guideCanvas.width = Math.max(1, pageCanvas.width);
-  guideCanvas.height = Math.max(1, pageCanvas.height);
-  const context = guideCanvas.getContext("2d");
-  if (!context) return { dataUrl: pageCanvas.toDataURL("image/png"), width: pageCanvas.width, height: pageCanvas.height };
-
-  const width = guideCanvas.width;
-  const height = guideCanvas.height;
-  context.drawImage(pageCanvas, 0, 0);
-  context.save();
-  context.lineWidth = Math.max(1, Math.round(Math.min(width, height) / 700));
-  context.font = `${Math.max(16, Math.round(Math.min(width, height) / 38))}px Inter, system-ui, sans-serif`;
-  context.textBaseline = "top";
-  for (let index = 0; index <= 10; index += 1) {
-    const ratio = index / 10;
-    const x = Math.round(width * ratio);
-    const y = Math.round(height * ratio);
-    const major = index % 5 === 0;
-    context.strokeStyle = major ? "rgba(232, 93, 79, 0.46)" : "rgba(47, 143, 131, 0.24)";
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, height);
-    context.stroke();
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
-    if (index > 0 && index < 10) {
-      drawGuideLabel(context, ratio.toFixed(1), x + 4, 4);
-      drawGuideLabel(context, ratio.toFixed(1), 4, y + 4);
-    }
-  }
-  context.lineWidth = Math.max(3, Math.round(Math.min(width, height) / 320));
-  context.strokeStyle = "rgba(232, 93, 79, 0.72)";
-  context.strokeRect(0, 0, width, height);
-  drawGuideLabel(context, "(0,0)", 8, 8);
-  drawGuideLabel(context, "(1,1)", Math.max(8, width - 112), Math.max(8, height - 42));
-  context.restore();
-
-  return { dataUrl: guideCanvas.toDataURL("image/png"), width, height };
-}
-
-function drawGuideLabel(context: CanvasRenderingContext2D, text: string, x: number, y: number) {
-  const metrics = context.measureText(text);
-  const height = Number.parseInt(context.font, 10) || 16;
-  context.fillStyle = "rgba(255, 255, 255, 0.78)";
-  context.fillRect(x - 3, y - 2, metrics.width + 6, height + 5);
-  context.fillStyle = "rgba(122, 34, 26, 0.88)";
-  context.fillText(text, x, y);
 }
 
 function hexToRgba(hex: string, alpha: number) {

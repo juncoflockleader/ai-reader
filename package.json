@@ -11,6 +11,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test:writer": "NODE_OPTIONS=--no-warnings=ExperimentalWarning node scripts/writer-integration-tests.mjs",
+    "test:algolab": "NODE_OPTIONS=--no-warnings=ExperimentalWarning tsx scripts/algolab-trace-tests.ts",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

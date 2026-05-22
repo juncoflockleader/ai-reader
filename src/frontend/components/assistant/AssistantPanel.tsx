@@ -228,7 +228,7 @@ export default function AssistantPanel({
 
   const currentModelChoice: ModelChoice = settings ? modelChoiceForMode(settings, chatMode) : { provider: "openai", model: "gpt-4.1-mini" };
 
-  const providerLabel = currentModelChoice.provider === "openai" ? "OpenAI" : "Claude";
+  const providerLabel = providerDisplayLabel(currentModelChoice.provider);
   const contextStatus = chatMode === "no_context_fast"
     ? "No context"
     : contextScope === "selection"
@@ -384,6 +384,19 @@ export default function AssistantPanel({
       </div>
     </aside>
   );
+}
+
+function providerDisplayLabel(provider: ModelChoice["provider"]) {
+  switch (provider) {
+    case "anthropic":
+      return "Claude";
+    case "deepseek":
+      return "DeepSeek";
+    case "doubao":
+      return "豆包";
+    default:
+      return "OpenAI";
+  }
 }
 
 function modelChoiceForMode(settings: AppSettings, chatMode: ChatMode): ModelChoice {

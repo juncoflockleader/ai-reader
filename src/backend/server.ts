@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import booksRouter from "./routes/books";
+import algolabRouter from "./routes/algolab";
 import chatRouter from "./routes/chat";
 import highlightsRouter from "./routes/highlights";
 import drawingsRouter from "./routes/drawings";
@@ -38,6 +39,7 @@ if (isPublicExposure) app.set("trust proxy", "loopback");
 app.use(createSecurityHeadersMiddleware(isPublicExposure));
 app.use(createRateLimitMiddleware(isPublicExposure, { name: "public", windowMs: 15 * 60 * 1000, max: 600 }));
 app.use("/api/chat", createRateLimitMiddleware(isPublicExposure, { name: "chat", windowMs: 15 * 60 * 1000, max: 30 }));
+app.use("/api/algolab", createRateLimitMiddleware(isPublicExposure, { name: "algolab", windowMs: 15 * 60 * 1000, max: 30 }));
 app.use(
   "/api/books",
   limitMethods(["POST"], createRateLimitMiddleware(isPublicExposure, { name: "upload", windowMs: 60 * 60 * 1000, max: 20 }))
@@ -50,6 +52,7 @@ app.use("/api/books", booksRouter);
 app.use("/api", highlightsRouter);
 app.use("/api", drawingsRouter);
 app.use("/api/chat", chatRouter);
+app.use("/api/algolab", algolabRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/writer", writerRouter);
 app.use("/api", (_req, res) => {

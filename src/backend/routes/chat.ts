@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { assembleContext, citationCandidates } from "../services/context/assembleContext";
-import { getProvider, normalizeModel } from "../services/llm";
+import { getProvider, isProviderId, normalizeModel, type ProviderId } from "../services/llm";
 import { getDb, id, json, nowIso, parseJson } from "../services/storage/db";
 import { getApiKey, getAppSettings } from "./settings";
 
 const router = Router();
-type ProviderId = "openai" | "anthropic";
 type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
 type ImageAttachment = {
   type: "image";
@@ -84,7 +83,7 @@ function normalizeChatMode(value: unknown): ChatMode {
 }
 
 function normalizeProvider(value: unknown): ProviderId {
-  return value === "anthropic" ? "anthropic" : "openai";
+  return isProviderId(value) ? value : "openai";
 }
 
 function normalizeAttachments(value: unknown): ImageAttachment[] {

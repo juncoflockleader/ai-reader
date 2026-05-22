@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="430" class="algolab-visual" viewBox="0 0 620 430" role="img" aria-label="Algorithm movement trace"><style><![CDATA[@font-face { font-display: block; font-family: KaTeX_AMS; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_AMS-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_AMS-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_AMS-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Caligraphic; font-style: normal; font-weight: 700; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Caligraphic; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Fraktur; font-style: normal; font-weight: 700; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Fraktur; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: normal; font-weight: 700; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Bold.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Bold.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Bold.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: italic; font-weight: 700; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: italic; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Italic.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Italic.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Italic.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Main-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Math; font-style: italic; font-weight: 700; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Math; font-style: italic; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Math-Italic.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Math-Italic.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Math-Italic.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_SansSerif; font-style: normal; font-weight: 700; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_SansSerif; font-style: italic; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_SansSerif; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Script; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Script-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Script-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Script-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Size1; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size1-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size1-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size1-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Size2; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size2-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size2-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size2-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Size3; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size3-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size3-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size3-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Size4; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size4-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size4-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Size4-Regular.ttf") format("truetype"); }
+@font-face { font-display: block; font-family: KaTeX_Typewriter; font-style: normal; font-weight: 400; src: url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.woff2") format("woff2"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.woff") format("woff"), url("/@fs/Users/jiawei/Documents/ai-reader/node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.ttf") format("truetype"); }
+.katex .textrm { font-family: KaTeX_Main; }
+.katex .textsf { font-family: KaTeX_SansSerif; }
+.katex .texttt { font-family: KaTeX_Typewriter; }
+.katex .mathnormal { font-family: KaTeX_Math; font-style: italic; }
+.katex .mathit { font-family: KaTeX_Main; font-style: italic; }
+.katex .mathbf { font-family: KaTeX_Main; font-weight: 700; }
+.katex .boldsymbol { font-family: KaTeX_Math; font-style: italic; font-weight: 700; }
+.katex .amsrm, .katex .mathbb, .katex .textbb { font-family: KaTeX_AMS; }
+.katex .mathcal { font-family: KaTeX_Caligraphic; }
+.katex .mathfrak, .katex .textfrak { font-family: KaTeX_Fraktur; }
+.katex .mathboldfrak, .katex .textboldfrak { font-family: KaTeX_Fraktur; font-weight: 700; }
+.katex .mathtt { font-family: KaTeX_Typewriter; }
+.katex .mathscr, .katex .textscr { font-family: KaTeX_Script; }
+.katex .mathsf, .katex .textsf { font-family: KaTeX_SansSerif; }
+.katex .mathboldsf, .katex .textboldsf { font-family: KaTeX_SansSerif; font-weight: 700; }
+.katex .mathitsf, .katex .mathsfit, .katex .textitsf { font-family: KaTeX_SansSerif; font-style: italic; }
+.katex .mainrm { font-family: KaTeX_Main; font-style: normal; }
+.katex .delimsizing.size1 { font-family: KaTeX_Size1; }
+.katex .delimsizing.size2 { font-family: KaTeX_Size2; }
+.katex .delimsizing.size3 { font-family: KaTeX_Size3; }
+.katex .delimsizing.size4 { font-family: KaTeX_Size4; }
+.katex .delimsizing.mult .delim-size1 > span { font-family: KaTeX_Size1; }
+.katex .delimsizing.mult .delim-size4 > span { font-family: KaTeX_Size4; }
+.katex .op-symbol.small-op { font-family: KaTeX_Size1; }
+.katex .op-symbol.large-op { font-family: KaTeX_Size2; }
+:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: rgb(238, 241, 243); color: rgb(24, 32, 37); font-synthesis: none; text-rendering: optimizelegibility; }
+.markdown-body code { padding: 1px 4px; border-radius: 5px; background: rgba(39, 64, 74, 0.1); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
+.writer-editor { flex: 1 1 0%; resize: none; border: 0px; border-radius: 0px; padding: 24px; background: rgb(255, 255, 255); color: rgb(24, 39, 45); font-family: ui-serif, Georgia, "Times New Roman", serif; font-size: 18px; line-height: 1.65; }
+.writer-revision-preview pre { max-height: 170px; overflow: auto; margin: 0px; padding: 9px; border-radius: 7px; background: rgb(243, 246, 246); color: rgb(64, 82, 89); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+.algolab-workspace { position: relative; min-height: 0px; flex: 1 1 0%; display: grid; grid-template-columns: minmax(250px, 300px) minmax(460px, 1fr) minmax(300px, 380px); background: rgb(237, 241, 242); }
+.algolab-topbar-toolbar { gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.algolab-topbar-toolbar::-webkit-scrollbar { height: 0px; }
+.algolab-speed { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0px 8px; border: 1px solid rgb(203, 214, 215); border-radius: 7px; background: rgb(255, 255, 255); color: rgb(82, 103, 109); }
+.algolab-speed input { width: 110px; accent-color: rgb(45, 103, 91); }
+.algolab-sidebar, .algolab-inspector, .algolab-stage-panel { min-width: 0px; min-height: 0px; }
+.algolab-sidebar, .algolab-inspector { display: flex; flex-direction: column; gap: 12px; overflow: auto; padding: 14px; background: rgb(247, 249, 248); }
+.algolab-sidebar { border-right: 1px solid rgb(209, 218, 221); }
+.algolab-inspector { border-left: 1px solid rgb(209, 218, 221); }
+.algolab-panel { min-width: 0px; display: grid; gap: 10px; align-content: start; padding: 12px; border: 1px solid rgb(216, 224, 223); border-radius: 8px; background: rgb(255, 255, 255); }
+.algolab-panel-title { display: flex; align-items: center; gap: 8px; color: rgb(38, 59, 67); }
+.algolab-panel-title strong { min-width: 0px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.algolab-choice-list { display: grid; gap: 8px; }
+.algolab-mode-switch { display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 6px; padding: 4px; border: 1px solid rgb(216, 224, 223); border-radius: 8px; background: rgb(244, 247, 247); }
+.algolab-mode-switch button { min-height: 30px; border-radius: 6px; background: transparent; color: rgb(82, 103, 109); font-size: 12px; font-weight: 760; }
+.algolab-mode-switch button.active { background: rgb(255, 255, 255); color: rgb(37, 72, 64); box-shadow: rgba(36, 54, 61, 0.12) 0px 1px 4px; }
+.algolab-choice { width: 100%; min-width: 0px; display: grid; gap: 5px; padding: 10px; border: 1px solid rgb(216, 224, 223); border-radius: 8px; background: rgb(251, 252, 252); color: rgb(38, 59, 67); text-align: left; }
+.algolab-choice.active { border-color: rgb(45, 103, 91); background: rgb(232, 243, 239); }
+.algolab-choice strong, .algolab-choice span { min-width: 0px; }
+.algolab-choice span { color: rgb(101, 118, 123); font-size: 12px; line-height: 1.35; }
+.algolab-input { min-height: 78px; resize: vertical; border: 1px solid rgb(200, 209, 213); border-radius: 7px; padding: 10px; background: rgb(255, 255, 255); color: rgb(29, 43, 49); outline: 0px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+.algolab-input:focus { border-color: rgb(45, 103, 91); box-shadow: rgba(45, 103, 91, 0.14) 0px 0px 0px 3px; }
+.algolab-preset-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.algolab-preset-row button { min-height: 30px; padding: 6px 8px; border-radius: 7px; background: rgb(237, 243, 244); color: rgb(64, 87, 93); font-size: 12px; font-weight: 700; }
+.algolab-code-panel { min-height: 220px; }
+.algolab-instrument-panel { min-height: 260px; }
+.algolab-code-draft { min-height: 170px; resize: vertical; border: 1px solid rgb(200, 209, 213); border-radius: 7px; padding: 10px; background: rgb(255, 255, 255); color: rgb(29, 43, 49); outline: 0px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.48; }
+.algolab-code-draft:focus { border-color: rgb(45, 103, 91); box-shadow: rgba(45, 103, 91, 0.14) 0px 0px 0px 3px; }
+.algolab-action-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.algolab-action-row button { min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 7px; background: rgb(237, 243, 244); color: rgb(64, 87, 93); font-size: 12px; font-weight: 760; }
+.algolab-action-row button:first-child { background: rgb(45, 103, 91); color: rgb(255, 255, 255); }
+.algolab-action-row button:disabled { opacity: 0.58; }
+.algolab-status, .algolab-warning-list span { min-width: 0px; padding: 8px; border: 1px solid rgb(219, 228, 227); border-radius: 7px; background: rgb(248, 250, 249); color: rgb(83, 104, 110); font-size: 12px; line-height: 1.4; }
+.algolab-warning-list { display: grid; gap: 6px; }
+.algolab-warning-list span { border-color: rgb(223, 195, 122); background: rgb(255, 248, 232); color: rgb(110, 72, 19); }
+.algolab-code { max-height: 360px; overflow: auto; margin: 0px; padding: 8px 0px 8px 42px; border: 1px solid rgb(224, 231, 230); border-radius: 8px; background: rgb(248, 250, 249); color: rgb(64, 82, 89); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55; }
+.algolab-code li { padding: 0px 10px 0px 4px; }
+.algolab-code li::marker { color: rgb(135, 151, 155); }
+.algolab-code li.active { background: rgb(255, 242, 206); color: rgb(81, 56, 18); }
+.algolab-code code { white-space: pre; }
+.algolab-stage-panel { display: flex; flex-direction: column; overflow: hidden; background: rgb(246, 248, 248); }
+.algolab-stage-header { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 18px 22px 12px; border-bottom: 1px solid rgb(216, 224, 223); background: rgb(251, 252, 252); }
+.algolab-stage-header h1 { margin: 2px 0px 0px; color: rgb(32, 52, 60); font-size: 21px; line-height: 1.2; }
+.algolab-visual-wrap { flex: 1 1 0%; min-height: 0px; display: grid; place-items: center; overflow: auto; padding: 18px; }
+.algolab-visual { width: min(100%, 980px); min-width: 600px; height: auto; display: block; border: 1px solid rgb(215, 221, 224); border-radius: 8px; background: linear-gradient(rgb(238, 244, 243) 1px, transparent 1px) 0% 0% / 28px 28px, linear-gradient(90deg, rgb(238, 244, 243) 1px, transparent 1px), rgb(255, 255, 255); box-shadow: rgba(36, 54, 61, 0.11) 0px 14px 34px; }
+.algolab-lane-label, .algolab-slot-index, .algolab-range-label, .algolab-pointer text, .algolab-item-id { font-size: 12px; font-weight: 720; }
+.algolab-lane-label { fill: rgb(99, 117, 124); text-transform: uppercase; }
+.algolab-slot-line { stroke: rgb(199, 210, 213); stroke-width: 2; stroke-linecap: round; }
+.algolab-slot-index { fill: rgb(135, 151, 155); text-anchor: middle; }
+.algolab-range { fill: rgba(238, 246, 247, 0.58); stroke-width: 2; stroke-dasharray: 5, 5; }
+.algolab-range-label-bg { fill: rgb(255, 255, 255); stroke-width: 1.5; }
+.algolab-pointer text { text-anchor: middle; }
+.algolab-range-label { text-anchor: start; }
+.algolab-item { transition: transform 0.24s; }
+.algolab-item circle { stroke: rgba(22, 36, 43, 0.18); stroke-width: 2; transition: stroke-width 0.18s, filter 0.18s; }
+.algolab-item.comparing circle { stroke: rgb(27, 41, 48); stroke-width: 5; }
+.algolab-item.moved circle { filter: drop-shadow(rgba(181, 72, 47, 0.28) 0px 8px 10px); }
+.algolab-item.sorted circle { stroke: rgb(45, 103, 91); stroke-width: 4; }
+.algolab-compare-arc { pointer-events: none; }
+.algolab-compare-arc path { fill: none; stroke: rgb(185, 120, 47); stroke-linecap: round; stroke-width: 3; }
+.algolab-compare-arc circle { fill: rgb(255, 248, 232); stroke: rgb(185, 120, 47); stroke-width: 2; }
+.algolab-compare-arc rect { fill: rgb(255, 248, 232); stroke: rgb(223, 195, 122); stroke-width: 1; }
+.algolab-compare-arc text { fill: rgb(91, 66, 19); font-size: 12px; font-weight: 820; text-anchor: middle; }
+.algolab-item-value { fill: rgb(255, 255, 255); font-size: 17px; font-weight: 780; text-anchor: middle; }
+.algolab-item-id { fill: rgb(83, 102, 109); text-anchor: middle; }
+.algolab-scrubber { flex: 0 0 auto; width: calc(100% - 44px); margin: 0px 22px 18px; accent-color: rgb(45, 103, 91); }
+.algolab-empty-state { height: 100%; display: grid; place-items: center; align-content: center; gap: 12px; padding: 24px; color: rgb(99, 117, 124); text-align: center; }
+.algolab-empty-state h1 { margin: 0px; color: rgb(38, 59, 67); font-size: 22px; }
+.algolab-empty-state p { margin: 0px; }
+.algolab-step-panel { flex: 0 0 clamp(220px, 28%, 268px); min-height: 220px; }
+.algolab-step-message { display: grid; grid-template-rows: 16px minmax(52px, 1fr); align-content: start; gap: 7px; min-height: 96px; padding: 10px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: rgb(216, 224, 223) rgb(216, 224, 223) rgb(216, 224, 223) rgb(185, 120, 47); border-image: initial; border-radius: 8px; background: rgb(255, 253, 248); color: rgb(37, 56, 63); }
+.algolab-step-message span { min-height: 16px; display: inline-flex; align-items: center; color: rgb(109, 75, 0); font-size: 11px; font-weight: 780; letter-spacing: 0.05em; text-transform: uppercase; }
+.algolab-step-message p { max-height: 64px; overflow: auto; margin: 0px; line-height: 1.45; scrollbar-width: thin; }
+.algolab-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0px, 1fr)); grid-template-rows: repeat(2, minmax(54px, 1fr)); gap: 8px; }
+.algolab-detail-grid span { min-width: 0px; min-height: 54px; display: grid; gap: 3px; padding: 9px; border: 1px solid rgb(219, 228, 227); border-radius: 7px; background: rgb(247, 250, 249); }
+.algolab-detail-grid strong, .algolab-detail-grid small { min-width: 0px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.algolab-detail-grid strong { color: rgb(38, 61, 68); font-size: 14px; }
+.algolab-detail-grid small { color: rgb(105, 123, 128); font-size: 12px; }
+.algolab-execution-panel { flex: 0 0 auto; }
+.algolab-execution { display: grid; gap: 10px; }
+.algolab-loop-list { display: grid; gap: 8px; }
+.algolab-loop-progress { min-width: 0px; display: grid; gap: 7px; padding: 9px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: rgb(219, 228, 227) rgb(219, 228, 227) rgb(219, 228, 227) rgb(96, 120, 191); border-image: initial; border-radius: 8px; background: rgb(248, 250, 249); }
+.algolab-loop-row { min-width: 0px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.algolab-loop-row strong, .algolab-loop-row span, .algolab-loop-progress small { min-width: 0px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.algolab-loop-row strong { color: rgb(38, 61, 68); font-size: 13px; }
+.algolab-loop-row span { color: rgb(89, 111, 117); font-size: 12px; font-weight: 760; }
+.algolab-loop-meter { height: 8px; overflow: hidden; border-radius: 999px; background: rgb(229, 236, 235); }
+.algolab-loop-meter span { display: block; height: 100%; border-radius: inherit; transition: width 0.22s; }
+.algolab-loop-progress small { color: rgb(105, 123, 128); font-size: 12px; }
+.algolab-call-window { position: absolute; z-index: 8; min-width: 280px; min-height: 220px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgb(185, 201, 200); border-radius: 8px; background: rgb(251, 252, 252); box-shadow: rgba(24, 40, 46, 0.22) 0px 18px 42px; }
+.algolab-call-window-header { flex: 0 0 auto; height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0px 12px; border-bottom: 1px solid rgb(217, 226, 225); background: rgb(246, 250, 249); color: rgb(38, 61, 68); cursor: grab; user-select: none; }
+.algolab-call-window-header:active { cursor: grabbing; }
+.algolab-call-window-header > div { min-width: 0px; display: inline-flex; align-items: center; gap: 7px; }
+.algolab-call-window-header strong, .algolab-call-window-header span { min-width: 0px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.algolab-call-window-header strong { font-size: 13px; }
+.algolab-call-window-header span { color: rgb(99, 117, 124); font-size: 12px; font-weight: 760; }
+.algolab-call-tree-window-canvas { flex: 1 1 0%; min-height: 0px; display: grid; place-items: center; overflow: hidden; padding: 8px; background: linear-gradient(rgb(238, 244, 243) 1px, transparent 1px) 0% 0% / 24px 24px, linear-gradient(90deg, rgb(238, 244, 243) 1px, transparent 1px), rgb(251, 252, 252); }
+.algolab-call-window-resize { position: absolute; right: 0px; bottom: 0px; width: 24px; height: 24px; border-radius: 0px; background: transparent; cursor: nwse-resize; }
+.algolab-call-window-resize::before { content: ""; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-right: 2px solid rgb(140, 162, 162); border-bottom: 2px solid rgb(140, 162, 162); }
+.algolab-call-tree-section { min-width: 0px; display: grid; gap: 8px; }
+.algolab-call-tree-header { min-width: 0px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.algolab-call-tree-header strong { min-width: 0px; overflow: hidden; color: rgb(38, 61, 68); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.algolab-call-tree-toolbar { display: inline-flex; align-items: center; gap: 6px; }
+.algolab-call-tree-toolbar .tool-button { width: 30px; height: 30px; }
+.algolab-call-tree-toolbar span { width: 42px; color: rgb(99, 117, 124); font-size: 12px; font-weight: 760; text-align: center; }
+.algolab-call-tree { max-height: 360px; overflow: auto; padding: 8px; border: 1px solid rgb(219, 228, 227); border-radius: 8px; background: linear-gradient(rgb(238, 244, 243) 1px, transparent 1px) 0% 0% / 24px 24px, linear-gradient(90deg, rgb(238, 244, 243) 1px, transparent 1px), rgb(251, 252, 252); }
+.algolab-call-tree svg, .algolab-call-tree-window-canvas svg { display: block; }
+.algolab-call-link { fill: none; stroke: rgb(199, 211, 211); stroke-linecap: round; stroke-width: 2; }
+.algolab-call-link.in-stack { stroke: rgb(185, 120, 47); stroke-width: 3; }
+.algolab-call-node-shape { fill: rgb(255, 255, 255); stroke: rgb(203, 216, 216); stroke-width: 1.4; }
+.algolab-call-svg-node.active .algolab-call-node-shape { fill: rgb(232, 243, 239); stroke: rgb(45, 103, 91); stroke-width: 2; }
+.algolab-call-svg-node.in-stack .algolab-call-node-shape { fill: rgb(255, 253, 245); stroke: rgb(223, 195, 122); }
+.algolab-call-svg-node.complete .algolab-call-node-shape { fill: rgb(246, 248, 248); }
+.algolab-call-node-label, .algolab-call-node-detail, .algolab-call-node-status { dominant-baseline: middle; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; pointer-events: none; }
+.algolab-call-node-label { fill: rgb(38, 61, 68); font-size: 12px; font-weight: 780; }
+.algolab-call-node-detail { fill: rgb(105, 123, 128); font-size: 11px; font-weight: 650; }
+.algolab-call-svg-node.complete .algolab-call-node-label, .algolab-call-svg-node.complete .algolab-call-node-detail { fill: rgb(102, 121, 127); }
+.algolab-call-node-badge { fill: rgb(237, 243, 244); }
+.algolab-call-svg-node.active .algolab-call-node-badge { fill: rgb(45, 103, 91); }
+.algolab-call-svg-node.in-stack .algolab-call-node-badge { fill: rgb(255, 243, 207); }
+.algolab-call-node-status { fill: rgb(99, 117, 124); font-size: 9px; font-weight: 800; text-anchor: middle; }
+.algolab-call-svg-node.active .algolab-call-node-status { fill: rgb(255, 255, 255); }
+.algolab-timeline-panel { flex: 1 1 0%; min-height: 220px; }
+.algolab-timeline { min-height: 0px; max-height: 100%; overflow: auto; display: grid; gap: 7px; }
+.algolab-timeline button { min-width: 0px; display: grid; grid-template-columns: 34px minmax(0px, 1fr); gap: 4px 8px; align-items: start; padding: 8px; border: 1px solid rgb(216, 224, 223); border-radius: 8px; background: rgb(251, 252, 252); color: rgb(48, 70, 77); text-align: left; }
+.algolab-timeline button.active { border-color: rgb(45, 103, 91); background: rgb(232, 243, 239); }
+.algolab-timeline button > span { grid-row: span 2; width: 28px; min-height: 28px; display: grid; place-items: center; border-radius: 7px; background: rgb(231, 238, 236); color: rgb(64, 87, 93); font-size: 12px; font-weight: 760; }
+.algolab-timeline strong, .algolab-timeline small { min-width: 0px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.algolab-timeline small { color: rgb(101, 118, 123); font-size: 12px; }
+@media (max-width: 1079px) {
+  .workspace.compact { position: relative; display: block; }
+  .workspace.compact .pdf-panel { border-right: 0px; height: 100%; }
+  .assistant-drawer { position: absolute; top: 0px; right: 0px; width: min(480px, 92vw); height: 100%; transform: translateX(100%); transition: transform 0.2s; z-index: 10; }
+  .assistant-drawer.open { transform: translateX(0px); }
+  .writer-workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(520px, 1fr) auto; overflow: auto; }
+  .writer-sidebar, .writer-inspector { max-height: none; border: 0px; }
+  .writer-editor-panel { min-height: 520px; border-top: 1px solid rgb(209, 218, 221); border-bottom: 1px solid rgb(209, 218, 221); }
+  .algolab-workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(520px, 1fr) auto; overflow: auto; }
+  .algolab-sidebar, .algolab-inspector { max-height: none; border: 0px; }
+  .algolab-stage-panel { min-height: 520px; border-top: 1px solid rgb(209, 218, 221); border-bottom: 1px solid rgb(209, 218, 221); }
+  .algolab-visual { min-width: 540px; }
+}]]></style><g><text class="algolab-lane-label" x="18" y="183">array</text><g><line class="algolab-slot-line" x1="65" x2="119" y1="242" y2="242"></line><text class="algolab-slot-index" x="92" y="266">0</text></g><g><line class="algolab-slot-line" x1="137" x2="191" y1="242" y2="242"></line><text class="algolab-slot-index" x="164" y="266">1</text></g><g><line class="algolab-slot-line" x1="209" x2="263" y1="242" y2="242"></line><text class="algolab-slot-index" x="236" y="266">2</text></g><g><line class="algolab-slot-line" x1="281" x2="335" y1="242" y2="242"></line><text class="algolab-slot-index" x="308" y="266">3</text></g><g><line class="algolab-slot-line" x1="353" x2="407" y1="242" y2="242"></line><text class="algolab-slot-index" x="380" y="266">4</text></g><g><line class="algolab-slot-line" x1="425" x2="479" y1="242" y2="242"></line><text class="algolab-slot-index" x="452" y="266">5</text></g><g><line class="algolab-slot-line" x1="497" x2="551" y1="242" y2="242"></line><text class="algolab-slot-index" x="524" y="266">6</text></g></g><g><text class="algolab-lane-label" x="18" y="331">aux</text><g><line class="algolab-slot-line" x1="65" x2="119" y1="390" y2="390"></line><text class="algolab-slot-index" x="92" y="414">0</text></g><g><line class="algolab-slot-line" x1="137" x2="191" y1="390" y2="390"></line><text class="algolab-slot-index" x="164" y="414">1</text></g><g><line class="algolab-slot-line" x1="209" x2="263" y1="390" y2="390"></line><text class="algolab-slot-index" x="236" y="414">2</text></g><g><line class="algolab-slot-line" x1="281" x2="335" y1="390" y2="390"></line><text class="algolab-slot-index" x="308" y="414">3</text></g><g><line class="algolab-slot-line" x1="353" x2="407" y1="390" y2="390"></line><text class="algolab-slot-index" x="380" y="414">4</text></g><g><line class="algolab-slot-line" x1="425" x2="479" y1="390" y2="390"></line><text class="algolab-slot-index" x="452" y="414">5</text></g><g><line class="algolab-slot-line" x1="497" x2="551" y1="390" y2="390"></line><text class="algolab-slot-index" x="524" y="414">6</text></g></g><g><rect class="algolab-range" x="58" y="126" width="500" height="132" rx="8" style="stroke: rgb(132, 168, 178);"></rect><rect class="algolab-range-label-bg" x="66" y="101" width="102" height="20" rx="10" style="stroke: rgb(132, 168, 178);"></rect><text class="algolab-range-label" x="76" y="115" style="fill: rgb(132, 168, 178);">active range</text></g><g class="algolab-pointer"><path d="M 516 82 L 532 82 L 524 97 Z" style="fill: rgb(181, 72, 47);"></path><text x="524" y="72" style="fill: rgb(181, 72, 47);">pivot</text></g><g class="algolab-pointer"><path d="M 372 82 L 388 82 L 380 97 Z" style="fill: rgb(45, 103, 91);"></path><text x="380" y="72" style="fill: rgb(45, 103, 91);">i</text></g><g class="algolab-item" transform="translate(92 178)"><circle r="25" fill="#d86642"></circle><text class="algolab-item-value" y="5">3</text><text class="algolab-item-id" y="46">id 2</text></g><g class="algolab-item" transform="translate(164 178)"><circle r="25" fill="#6078bf"></circle><text class="algolab-item-value" y="5">5</text><text class="algolab-item-id" y="46">id 3</text></g><g class="algolab-item" transform="translate(236 178)"><circle r="25" fill="#c29a2e"></circle><text class="algolab-item-value" y="5">1</text><text class="algolab-item-id" y="46">id 4</text></g><g class="algolab-item" transform="translate(308 178)"><circle r="25" fill="#a05e9a"></circle><text class="algolab-item-value" y="5">2</text><text class="algolab-item-id" y="46">id 6</text></g><g class="algolab-item moved" transform="translate(380 178)"><circle r="25" fill="#4d8bcb"></circle><text class="algolab-item-value" y="5">7</text><text class="algolab-item-id" y="46">id 7</text></g><g class="algolab-item" transform="translate(452 178)"><circle r="25" fill="#347f8f"></circle><text class="algolab-item-value" y="5">8</text><text class="algolab-item-id" y="46">id 1</text></g><g class="algolab-item moved" transform="translate(524 178)"><circle r="25" fill="#5f9b6e"></circle><text class="algolab-item-value" y="5">9</text><text class="algolab-item-id" y="46">id 5</text></g></svg>

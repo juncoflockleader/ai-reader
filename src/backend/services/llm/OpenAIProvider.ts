@@ -2,11 +2,18 @@ import OpenAI from "openai";
 import type { ChatRequest, ChatResponse, LLMProvider } from "./LLMProvider";
 
 export class OpenAIProvider implements LLMProvider {
-  id = "openai";
-  displayName = "OpenAI";
+  id: string;
+  displayName: string;
+  private baseURL?: string;
+
+  constructor(id = "openai", displayName = "OpenAI", baseURL?: string) {
+    this.id = id;
+    this.displayName = displayName;
+    this.baseURL = baseURL;
+  }
 
   async chat(request: ChatRequest, apiKey: string): Promise<ChatResponse> {
-    const client = new OpenAI({ apiKey });
+    const client = new OpenAI({ apiKey, baseURL: this.baseURL });
     const response = await client.chat.completions.create({
       model: request.model,
       messages: request.messages.map(toOpenAIMessage),

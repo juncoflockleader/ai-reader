@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { nowIso } from "../services/storage/db";
 import { getAppDb } from "../services/storage/appDb";
-import { getProvider, getProviderModels, normalizeModel } from "../services/llm";
+import { getProvider, getProviderModels, isProviderId, normalizeModel, providerIds, type ProviderId } from "../services/llm";
 
 const router = Router();
 
-type ProviderId = "openai" | "anthropic";
 type ChatMode = "no_context_fast" | "pdf_fast" | "pdf_thinking";
 type ModelChoice = { provider: ProviderId; model: string };
 type AppSettings = {
@@ -21,7 +20,9 @@ const defaults: AppSettings = {
   defaultProvider: "openai",
   providers: {
     openai: { model: "gpt-4.1-mini", hasKey: false },
-    anthropic: { model: "claude-sonnet-4-6", hasKey: false }
+    anthropic: { model: "claude-sonnet-4-6", hasKey: false },
+    deepseek: { model: "deepseek-v4-flash", hasKey: false },
+    doubao: { model: "doubao-seed-2-0-lite-260215", hasKey: false }
   },
   modelMode: "single",
   chatModels: {
@@ -74,23 +75,21 @@ router.patch("/", (req, res) => {
     ...current,
     ...req.body,
     defaultProvider,
-    providers: {
-      openai: { ...current.providers.openai, ...(req.body.providers?.openai ?? {}) },
-      anthropic: { ...current.providers.anthropic, ...(req.body.providers?.anthropic ?? {}) }
-    },
+    providers: mergeProviderSettings(current.providers, req.body.providers),
     chatModels: normalizeChatModels({ ...current.chatModels, ...(req.body.chatModels ?? {}) }, defaultProvider)
   };
-  next.providers.openai.model = normalizeProviderModel("openai", next.providers.openai.model);
-  next.providers.anthropic.model = normalizeProviderModel("anthropic", next.providers.anthropic.model);
+  providerIds.forEach((provider) => {
+    next.providers[provider].model = normalizeProviderModel(provider, next.providers[provider].model);
+  });
   next.modelMode = req.body.modelMode === "detailed" ? "detailed" : "single";
 
-  for (const provider of ["openai", "anthropic"]) {
+  for (const provider of providerIds) {
     const apiKey = req.body.providers?.[provider]?.apiKey;
     if (typeof apiKey === "string" && apiKey.trim()) {
       setSetting(`llm.${provider}.apiKey`, apiKey.trim());
-      next.providers[provider as ProviderId].hasKey = true;
+      next.providers[provider].hasKey = true;
     }
-    delete next.providers[provider as ProviderId].apiKey;
+    delete next.providers[provider].apiKey;
   }
   const savedSettings = normalizeSettings(next);
   setSetting("app.settings", savedSettings);
@@ -100,13 +99,14 @@ router.patch("/", (req, res) => {
 router.post("/llm/test", async (req, res, next) => {
   try {
     const { provider = "openai", model } = req.body;
-    const normalizedModel = normalizeModel(provider, model);
-    const apiKey = getApiKey(provider);
+    const providerId = normalizeProvider(provider);
+    const normalizedModel = normalizeModel(providerId, model);
+    const apiKey = (typeof req.body.apiKey === "string" ? req.body.apiKey.trim() : "") || getApiKey(providerId);
     if (!apiKey) {
-      res.status(400).json({ error: `Missing ${provider} API key.` });
+      res.status(400).json({ error: `Missing ${providerId} API key.` });
       return;
     }
-    const llm = getProvider(provider);
+    const llm = getProvider(providerId);
     const response = await llm.chat(
       {
         model: normalizedModel,
@@ -118,7 +118,7 @@ router.post("/llm/test", async (req, res, next) => {
       },
       apiKey
     );
-    res.json({ ok: true, provider, model: normalizedModel, message: response.content });
+    res.json({ ok: true, provider: providerId, model: normalizedModel, message: response.content });
   } catch (error) {
     next(error);
   }
@@ -128,7 +128,7 @@ router.delete("/llm/:provider/key", (req, res) => {
   const provider = req.params.provider;
   getAppDb().prepare("DELETE FROM settings WHERE key = ?").run(`llm.${provider}.apiKey`);
   const settings = getAppSettings();
-  if (provider === "openai" || provider === "anthropic") {
+  if (isProviderId(provider)) {
     settings.providers[provider].hasKey = false;
     setSetting("app.settings", settings);
   }
@@ -137,20 +137,18 @@ router.delete("/llm/:provider/key", (req, res) => {
 
 function normalizeSettings(settings: AppSettings): AppSettings {
   const defaultProvider = normalizeProvider(settings.defaultProvider);
-  const providers = {
-    openai: {
-      ...defaults.providers.openai,
-      ...(settings.providers?.openai ?? {}),
-      model: normalizeProviderModel("openai", settings.providers?.openai?.model)
-    },
-    anthropic: {
-      ...defaults.providers.anthropic,
-      ...(settings.providers?.anthropic ?? {}),
-      model: normalizeProviderModel("anthropic", settings.providers?.anthropic?.model)
-    }
-  };
-  delete providers.openai.apiKey;
-  delete providers.anthropic.apiKey;
+  const incomingProviders = (settings.providers ?? {}) as Partial<AppSettings["providers"]>;
+  const providers = Object.fromEntries(
+    providerIds.map((provider) => {
+      const nextProvider = {
+        ...defaults.providers[provider],
+        ...(incomingProviders[provider] ?? {}),
+        model: normalizeProviderModel(provider, incomingProviders[provider]?.model)
+      };
+      delete nextProvider.apiKey;
+      return [provider, nextProvider];
+    })
+  ) as AppSettings["providers"];
   return {
     ...defaults,
     ...settings,
@@ -179,7 +177,7 @@ function normalizeChoice(value: Partial<ModelChoice> | undefined, defaultProvide
 }
 
 function normalizeProvider(value: unknown): ProviderId {
-  return value === "anthropic" ? "anthropic" : "openai";
+  return isProviderId(value) ? value : "openai";
 }
 
 function normalizeProviderModel(provider: ProviderId, model: string | undefined) {
@@ -192,6 +190,15 @@ function defaultChatModel(provider: ProviderId, chatMode: ChatMode) {
     return defaults.chatModels[chatMode].model;
   }
   return defaults.providers[provider].model;
+}
+
+function mergeProviderSettings(
+  current: AppSettings["providers"],
+  incoming: Partial<Record<ProviderId, Partial<AppSettings["providers"][ProviderId]>>> | undefined
+) {
+  return Object.fromEntries(
+    providerIds.map((provider) => [provider, { ...current[provider], ...(incoming?.[provider] ?? {}) }])
+  ) as AppSettings["providers"];
 }
 
 export default router;
