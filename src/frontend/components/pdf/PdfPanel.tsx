@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Brush, Eraser, Eye, ImagePlus, Keyboard, Loader2, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Bookmark, BookmarkPlus, Brush, ChevronDown, Eraser, Eye, ImagePlus, Keyboard, Loader2, MoreHorizontal, Ruler, Search, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -9,6 +9,60 @@ import { getAction, listActions } from "../../actions/registry";
 import MarkdownText from "../common/MarkdownText";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
+
+function ToolPopover({
+  icon: Icon,
+  active,
+  title,
+  align = "left",
+  children
+}: {
+  icon: typeof Search;
+  active?: boolean;
+  title: string;
+  align?: "left" | "right";
+  children: (close: () => void) => React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (wrapRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+  return (
+    <div className="tool-popover-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={active || open ? "tool-button has-caret active" : "tool-button has-caret"}
+        onClick={() => setOpen((value) => !value)}
+        title={title}
+        aria-label={title}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        <Icon size={16} />
+        <ChevronDown size={10} className="tool-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className={`tool-popover tool-popover-${align}`} role="menu">
+          {children(() => setOpen(false))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Props = {
   book: Book;
@@ -58,6 +112,12 @@ const minReaderZoom = 0.7;
 const maxReaderZoom = 2.5;
 const PREV_ICON_BASE64 = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDE0IDE0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNOCAyTDMgN0w4IDEyIiBzdHJva2U9IiMyNDNiNDMiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=";
 const NEXT_ICON_BASE64 = "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDE0IDE0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNNiAyTDExIDdMNiAxMiIgc3Ryb2tlPSIjMjQzYjQzIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+";
+const selectionShortcuts = {
+  ask: "Ctrl+A",
+  explain: "Ctrl+E",
+  summarize: "Ctrl+S",
+  saveNote: "Ctrl+N"
+};
 
 function readerZoomStorageKey(bookId: string) {
   return `studyreader:reader:zoom:${bookId}`;
@@ -559,8 +619,8 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
         else undoScribble(currentPage);
         return;
       }
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (commandPaletteOpen) return;
+      if (!isSelectionShortcutEvent(event) || isEditableKeyboardTarget(event.target)) return;
       if (key === "a" && selectedText.trim()) {
         event.preventDefault();
         onDraftQuestion(`Answer a question about this selected passage:\n\n${selectedText}`);
@@ -756,137 +816,195 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
           <span className="topbar-book-label">Reading</span>
           <strong>{book.title ?? book.file_name}</strong>
         </div>
-        <div className="page-stepper">
-          <button onClick={() => changePage(currentPage - 1)} title="Previous page" aria-label="Previous page">
-            <img src={`data:image/svg+xml;base64,${PREV_ICON_BASE64}`} alt="" />
-          </button>
-          <input
-            value={currentPage}
-            onChange={(event) => changePage(Number(event.target.value))}
-          />
-          <span>/ {book.page_count || "..."}</span>
-          <button onClick={() => changePage(currentPage + 1)} title="Next page" aria-label="Next page">
-            <img src={`data:image/svg+xml;base64,${NEXT_ICON_BASE64}`} alt="" />
-          </button>
-        </div>
-        <div className="search-popover-wrap" ref={searchWrapRef}>
-          <button
-            type="button"
-            className={searchOpen || query.trim() ? "tool-button active" : "tool-button"}
-            onClick={() => setSearchOpen((open) => !open)}
-            title="Search loaded text"
-            aria-label="Search loaded text"
-            aria-expanded={searchOpen}
-          >
-            <Search size={16} />
-          </button>
-          {searchOpen && (
-            <div className="search-popover">
-              <label className="search-box">
-                <Search size={16} />
-                <input
-                  ref={searchInputRef}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search loaded text"
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") setSearchOpen(false);
-                  }}
-                />
-                {query.trim() ? (
-                  <button type="button" onClick={() => setQuery("")} title="Clear search" aria-label="Clear search">
-                    <X size={14} />
-                  </button>
-                ) : null}
-              </label>
-            </div>
-          )}
-        </div>
-        {(() => {
-          const action = getAction("highlightSelection");
-          const Icon = action.icon;
-          return (
-            <button className="tool-button" onClick={saveHighlight} disabled={!selectedText.trim()} title={action.label}>
-              <Icon size={16} />
+
+        <div className="tool-group" aria-label="Navigate">
+          <span className="tool-group-label">Navigate</span>
+          <div className="page-stepper">
+            <button onClick={() => changePage(currentPage - 1)} title="Previous page" aria-label="Previous page">
+              <img src={`data:image/svg+xml;base64,${PREV_ICON_BASE64}`} alt="" />
             </button>
-          );
-        })()}
-        <button className="tool-button" onClick={saveBookmark} title="Bookmark page">
-          <BookmarkPlus size={16} />
-        </button>
-        <button
-          className={areaCaptureEnabled ? "tool-button active" : "tool-button"}
-          onClick={() => setAreaCaptureEnabled((enabled) => !enabled)}
-          title="Capture PDF area"
-        >
-          <ImagePlus size={16} />
-        </button>
-        <div className="tool-subgroup" aria-label="Scribble tools">
-          <button className={scribbleEnabled ? "tool-button active" : "tool-button"} onClick={() => setScribbleEnabled((v) => !v)} title="Enable scribbling">
-            <Brush size={16} />
-          </button>
-          <button className={showScribbles ? "tool-button active" : "tool-button"} onClick={() => setShowScribbles((v) => !v)} title="Show/hide scribbles">
-            <Eye size={16} />
-          </button>
-          <button
-            className={scribbleEraser ? "tool-button active" : "tool-button"}
-            onClick={() => {
-              setScribbleEnabled(true);
-              setScribbleEraser((v) => !v);
-            }}
-            title="Erase scribbles"
-          >
-            <Eraser size={16} />
-          </button>
-          <label className="scribble-color" title="Scribble color">
-            <input type="color" value={scribbleColor} onChange={(event) => setScribbleColor(event.target.value)} disabled={scribbleEraser} />
-          </label>
-          <button
-            className="tool-button danger"
-            title="Remove all scribbles on current page"
-            onClick={() => {
-              setDrawingsByPage((current) => ({ ...current, [currentPage]: [] }));
-              void api(`/api/books/${book.id}/drawings/${currentPage}`, { method: "PUT", body: JSON.stringify({ strokes: [], overlay_type: "scribble" }) });
-            }}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-        <button className={showGettingStarted ? "tool-button active" : "tool-button"} onClick={() => setShowGettingStarted((v) => !v)} title="Show getting started">
-          <Sparkles size={16} />
-        </button>
-        <button className={rulerEnabled ? "tool-button active" : "tool-button"} onClick={() => setRulerEnabled((enabled) => !enabled)} title="Reading ruler">
-          <Ruler size={16} />
-        </button>
-        {rulerEnabled && (
-          <div className="ruler-controls" aria-label="Reading ruler controls">
-            {(["small", "medium", "large"] as const).map((height) => (
-              <button
-                key={height}
-                className={rulerHeight === height ? "ruler-size active" : "ruler-size"}
-                onClick={() => setRulerHeight(height)}
-                title={`${height} ruler`}
-              >
-                {rulerHeightLabels[height]}
-              </button>
-            ))}
-            <label className="ruler-color" title="Ruler color">
-              <input type="color" value={rulerColor} onChange={(event) => setRulerColor(event.target.value)} />
-            </label>
+            <input
+              value={currentPage}
+              onChange={(event) => changePage(Number(event.target.value))}
+            />
+            <span>/ {book.page_count || "..."}</span>
+            <button onClick={() => changePage(currentPage + 1)} title="Next page" aria-label="Next page">
+              <img src={`data:image/svg+xml;base64,${NEXT_ICON_BASE64}`} alt="" />
+            </button>
           </div>
-        )}
-        <div className="zoom-controls" aria-label="PDF zoom controls">
-          <button className="tool-button" onClick={() => changeZoom(-0.1)} disabled={zoom <= minReaderZoom} title="Zoom out">
-            <ZoomOut size={16} />
-          </button>
-          <span>{Math.round(zoom * 100)}%</span>
-          <button className="tool-button" onClick={() => changeZoom(0.1)} disabled={zoom >= maxReaderZoom} title="Zoom in">
-            <ZoomIn size={16} />
-          </button>
+          <div className="search-popover-wrap" ref={searchWrapRef}>
+            <button
+              type="button"
+              className={searchOpen || query.trim() ? "tool-button active" : "tool-button"}
+              onClick={() => setSearchOpen((open) => !open)}
+              title="Search loaded text"
+              aria-label="Search loaded text"
+              aria-expanded={searchOpen}
+            >
+              <Search size={16} />
+            </button>
+            {searchOpen && (
+              <div className="search-popover">
+                <label className="search-box">
+                  <Search size={16} />
+                  <input
+                    ref={searchInputRef}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search loaded text"
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setSearchOpen(false);
+                    }}
+                  />
+                  {query.trim() ? (
+                    <button type="button" onClick={() => setQuery("")} title="Clear search" aria-label="Clear search">
+                      <X size={14} />
+                    </button>
+                  ) : null}
+                </label>
+              </div>
+            )}
+          </div>
         </div>
-        <button className={commandPaletteOpen ? "tool-button active" : "tool-button"} onClick={() => setCommandPaletteOpen((open) => !open)} title="Command palette (Ctrl/Cmd+K)">
-          <Keyboard size={16} />
-        </button>
+
+        <div
+          className={`tool-group tool-group-annotate${selectedText.trim() || areaCaptureEnabled || scribbleEnabled ? " is-active" : ""}`}
+          aria-label="Annotate"
+        >
+          <span className="tool-group-label">Annotate</span>
+          {(() => {
+            const action = getAction("highlightSelection");
+            const Icon = action.icon;
+            return (
+              <button className={selectedText.trim() ? "tool-button is-primed" : "tool-button"} onClick={saveHighlight} disabled={!selectedText.trim()} title={action.label}>
+                <Icon size={16} />
+              </button>
+            );
+          })()}
+          <button className="tool-button" onClick={saveBookmark} title="Bookmark page">
+            <BookmarkPlus size={16} />
+          </button>
+          <button
+            className={areaCaptureEnabled ? "tool-button active" : "tool-button"}
+            onClick={() => setAreaCaptureEnabled((enabled) => !enabled)}
+            title="Capture PDF area"
+          >
+            <ImagePlus size={16} />
+          </button>
+          <ToolPopover icon={Brush} active={scribbleEnabled} title="Drawing tools">
+            {() => (
+              <div className="tool-popover-body">
+                <div className="tool-popover-title">Drawing</div>
+                <button className={scribbleEnabled ? "popover-row is-on" : "popover-row"} onClick={() => setScribbleEnabled((v) => !v)}>
+                  <Brush size={15} />
+                  <span>{scribbleEnabled ? "Drawing on" : "Enable drawing"}</span>
+                </button>
+                <button className={showScribbles ? "popover-row is-on" : "popover-row"} onClick={() => setShowScribbles((v) => !v)}>
+                  <Eye size={15} />
+                  <span>{showScribbles ? "Strokes visible" : "Strokes hidden"}</span>
+                </button>
+                <button
+                  className={scribbleEraser ? "popover-row is-on" : "popover-row"}
+                  onClick={() => {
+                    setScribbleEnabled(true);
+                    setScribbleEraser((v) => !v);
+                  }}
+                >
+                  <Eraser size={15} />
+                  <span>Eraser</span>
+                </button>
+                <label className="popover-row popover-row-color">
+                  <span className="scribble-color" title="Stroke color">
+                    <input type="color" value={scribbleColor} onChange={(event) => setScribbleColor(event.target.value)} disabled={scribbleEraser} />
+                  </span>
+                  <span>Stroke color</span>
+                </label>
+                <button
+                  className="popover-row is-danger"
+                  onClick={() => {
+                    setDrawingsByPage((current) => ({ ...current, [currentPage]: [] }));
+                    void api(`/api/books/${book.id}/drawings/${currentPage}`, { method: "PUT", body: JSON.stringify({ strokes: [], overlay_type: "scribble" }) });
+                  }}
+                >
+                  <Trash2 size={15} />
+                  <span>Clear page</span>
+                </button>
+              </div>
+            )}
+          </ToolPopover>
+        </div>
+
+        <div className="tool-group" aria-label="View">
+          <span className="tool-group-label">View</span>
+          <ToolPopover icon={Ruler} active={rulerEnabled} title="Reading ruler" align="right">
+            {() => (
+              <div className="tool-popover-body">
+                <div className="tool-popover-title">Reading ruler</div>
+                <button className={rulerEnabled ? "popover-row is-on" : "popover-row"} onClick={() => setRulerEnabled((enabled) => !enabled)}>
+                  <Ruler size={15} />
+                  <span>{rulerEnabled ? "Ruler on" : "Enable ruler"}</span>
+                </button>
+                <div className="popover-seg" aria-label="Ruler size">
+                  {(["small", "medium", "large"] as const).map((height) => (
+                    <button
+                      key={height}
+                      className={rulerHeight === height ? "active" : ""}
+                      onClick={() => {
+                        setRulerEnabled(true);
+                        setRulerHeight(height);
+                      }}
+                      title={`${height} ruler`}
+                    >
+                      {rulerHeightLabels[height]}
+                    </button>
+                  ))}
+                </div>
+                <label className="popover-row popover-row-color">
+                  <span className="ruler-color" title="Ruler color">
+                    <input type="color" value={rulerColor} onChange={(event) => setRulerColor(event.target.value)} />
+                  </span>
+                  <span>Ruler color</span>
+                </label>
+              </div>
+            )}
+          </ToolPopover>
+          <div className="zoom-controls" aria-label="PDF zoom controls">
+            <button className="tool-button" onClick={() => changeZoom(-0.1)} disabled={zoom <= minReaderZoom} title="Zoom out">
+              <ZoomOut size={16} />
+            </button>
+            <span>{Math.round(zoom * 100)}%</span>
+            <button className="tool-button" onClick={() => changeZoom(0.1)} disabled={zoom >= maxReaderZoom} title="Zoom in">
+              <ZoomIn size={16} />
+            </button>
+          </div>
+          <ToolPopover icon={MoreHorizontal} active={showGettingStarted || commandPaletteOpen} title="More tools" align="right">
+            {(close) => (
+              <div className="tool-popover-body">
+                <button
+                  className={showGettingStarted ? "popover-row is-on" : "popover-row"}
+                  onClick={() => {
+                    setShowGettingStarted((v) => !v);
+                    close();
+                  }}
+                >
+                  <Sparkles size={15} />
+                  <span>Getting started</span>
+                </button>
+                <button
+                  className="popover-row"
+                  onClick={() => {
+                    setCommandPaletteOpen(true);
+                    close();
+                  }}
+                >
+                  <Keyboard size={15} />
+                  <span>Command palette</span>
+                  <kbd className="popover-kbd">⌘K</kbd>
+                </button>
+              </div>
+            )}
+          </ToolPopover>
+        </div>
     </div>
   );
 
@@ -1094,16 +1212,16 @@ export default function PdfPanel({ book, currentPage, selectedText, onPageChange
                 const HighlightIcon = highlightAction.icon;
                 return (
                   <>
-                    <button onClick={() => onDraftQuestion(`Answer a question about this selected passage:\n\n${contextMenu.text}`)} title="Ask (A)">
+                    <button onClick={() => onDraftQuestion(`Answer a question about this selected passage:\n\n${contextMenu.text}`)} title={`Ask (${selectionShortcuts.ask})`}>
                       <span>Ask</span>
                     </button>
-                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title="Explain (E)">
+                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title={`Explain (${selectionShortcuts.explain})`}>
                       <span>Explain</span>
                     </button>
-                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title="Summarize (S)">
+                    <button onClick={() => draftExplanation(contextMenu.text, contextMenu.page)} title={`Summarize (${selectionShortcuts.summarize})`}>
                       <span>Summarize</span>
                     </button>
-                    <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)} title="Save note (N)">
+                    <button onClick={() => void saveHighlightForSelection(contextMenu.text, contextMenu.page)} title={`Save note (${selectionShortcuts.saveNote})`}>
                       <HighlightIcon size={15} />
                       <span>Save note</span>
                     </button>
@@ -1533,6 +1651,20 @@ function textFromSelectedSpans(surface: HTMLDivElement, range: Range) {
 
 function isNodeInside(node: Node, element: HTMLElement) {
   return node === element || element.contains(node);
+}
+
+function isSelectionShortcutEvent(event: KeyboardEvent) {
+  return event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+}
+
+function isEditableKeyboardTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false;
+  const editable = target.closest("input, textarea, select, [contenteditable]");
+  if (!editable) return false;
+  return editable instanceof HTMLInputElement ||
+    editable instanceof HTMLTextAreaElement ||
+    editable instanceof HTMLSelectElement ||
+    (editable instanceof HTMLElement && editable.isContentEditable);
 }
 
 function bestSelectionText(primary: string, fallback: string) {

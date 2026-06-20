@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Brain, Library, Network, PanelRightOpen, PenLine, Settings, StickyNote, Upload, X } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, Coffee, Library, Moon, Network, PanelRightOpen, PenLine, Settings, StickyNote, Sun, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
 import PdfPanel from "./components/pdf/PdfPanel";
@@ -15,6 +15,18 @@ import DistributedAlgorithmsWorkspace from "./components/distributed/Distributed
 const ASSISTANT_MIN_WIDTH_PX = 360;
 const SPLITTER_WIDTH_PX = 8;
 type StudyApp = "reader" | "writer" | "algolab" | "distlab";
+
+type ReaderTheme = "day" | "warm" | "night";
+const THEMES: { id: ReaderTheme; label: string; icon: typeof Sun }[] = [
+  { id: "day", label: "Day", icon: Sun },
+  { id: "warm", label: "Warm", icon: Coffee },
+  { id: "night", label: "Night", icon: Moon }
+];
+const THEME_STORAGE_KEY = "studyreader:ui:theme";
+function readStoredTheme(): ReaderTheme | null {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  return saved === "day" || saved === "warm" || saved === "night" ? saved : null;
+}
 
 function clampLeftPanePercent(percent: number, workspaceWidth: number) {
   if (!Number.isFinite(percent)) return 72;
@@ -52,6 +64,11 @@ export default function App() {
   const [assistantResetVersion, setAssistantResetVersion] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState<ReaderTheme>(() => {
+    const saved = readStoredTheme();
+    if (saved) return saved;
+    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "night" : "day";
+  });
 
   const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(() => {
     const saved = Number(localStorage.getItem("studyreader:ui:leftPaneWidthPercent") ?? "72");
@@ -158,6 +175,23 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    if (readStoredTheme()) return; // user has chosen explicitly — stop following the OS
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (event: MediaQueryListEvent) => setTheme(event.matches ? "night" : "day");
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [theme]);
+
+  function chooseTheme(next: ReaderTheme) {
+    setTheme(next);
+    localStorage.setItem(THEME_STORAGE_KEY, next);
+  }
+
   function chooseApp(app: StudyApp) {
     setActiveApp(app);
     setStartOpen(false);
@@ -244,6 +278,21 @@ export default function App() {
           </div>
           <div id="app-topbar-tools" className="topbar-tools" />
           <div id="app-topbar-assistant" className="topbar-assistant" />
+          <div className="topbar-right">
+          <div className="theme-switcher" role="group" aria-label="Reading theme">
+            {THEMES.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                className={theme === id ? "active" : ""}
+                onClick={() => chooseTheme(id)}
+                title={`${label} theme`}
+                aria-label={`${label} theme`}
+                aria-pressed={theme === id}
+              >
+                <Icon size={15} />
+              </button>
+            ))}
+          </div>
           <div className="topbar-actions">
             {activeApp === "reader" && (
               <>
@@ -271,6 +320,7 @@ export default function App() {
             <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings">
               <Settings size={18} />
             </button>
+          </div>
           </div>
         </div>
       </header>
