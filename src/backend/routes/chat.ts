@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { assembleContext, citationCandidates } from "../services/context/assembleContext";
-import { getProvider, isProviderId, normalizeModel, type ProviderId } from "../services/llm";
+import { getProvider, isProviderId, modelIsKnownTextOnly, normalizeModel, type ProviderId } from "../services/llm";
 import { getDb, id, json, nowIso, parseJson } from "../services/storage/db";
 import { getApiKey, getAppSettings } from "./settings";
 
@@ -36,6 +36,13 @@ router.post("/", async (req, res, next) => {
       return;
     }
 
+    // Pre-flight only the high-confidence text-only case; everything else is
+    // allowed to try and covered by the runtime backstop below.
+    if (attachments.length > 0 && modelIsKnownTextOnly(providerId, model)) {
+      res.status(400).json({ error: imageUnsupportedMessage(providerId, model) });
+      return;
+    }
+
     const context = assembleContext({
       bookId,
       userQuestion: question,
@@ -50,18 +57,29 @@ router.post("/", async (req, res, next) => {
     const conversationId = req.body.conversation_id ?? createConversation(bookId, question);
     saveMessage(conversationId, "user", question, null, null);
 
-    const answer = await provider.chat(
-      {
-        model,
-        temperature: 0.2,
-        maxTokens: chatMode === "pdf_thinking" ? 2200 : 900,
-        messages: [
-          { role: "system", content: context.systemInstruction },
-          { role: "user", content: context.userPrompt, attachments }
-        ]
-      },
-      apiKey
-    );
+    let answer: { content: string };
+    try {
+      answer = await provider.chat(
+        {
+          model,
+          temperature: 0.2,
+          maxTokens: chatMode === "pdf_thinking" ? 2200 : 900,
+          messages: [
+            { role: "system", content: context.systemInstruction },
+            { role: "user", content: context.userPrompt, attachments }
+          ]
+        },
+        apiKey
+      );
+    } catch (error) {
+      // Backstop: if a not-known-text-only model still rejects the image, translate
+      // the provider's error into the same clear message instead of a raw failure.
+      if (attachments.length > 0 && isImageUnsupportedError(error)) {
+        res.status(400).json({ error: imageUnsupportedMessage(providerId, model) });
+        return;
+      }
+      throw error;
+    }
 
     const citations = context.contextDebug.pdfContextIncluded ? citationCandidates(context.sources) : [];
     const messageId = saveMessage(conversationId, "assistant", answer.content, context.contextDebug, citations);
@@ -77,6 +95,35 @@ router.post("/", async (req, res, next) => {
     next(error);
   }
 });
+
+function imageUnsupportedMessage(providerId: ProviderId, model: string): string {
+  return `The selected model (${getProvider(providerId).displayName} · ${model}) can't read images. Remove the screenshot, or switch to a vision-capable model like Claude or GPT-4o in Settings.`;
+}
+
+/**
+ * Best-effort detection of a "this model can't take images" error from a provider.
+ * Only consulted when the request actually carried image attachments, so a false
+ * positive is unlikely; a false negative simply falls through to the generic error.
+ */
+function isImageUnsupportedError(error: unknown): boolean {
+  const message = extractErrorMessage(error).toLowerCase();
+  if (!message) return false;
+  const mentionsImage = /image|vision|multimodal|content type|image_url/.test(message);
+  const mentionsUnsupported = /support|unsupported|invalid|not (allowed|permitted|enabled)|cannot|unable|only supported|does not|no longer/.test(message);
+  return mentionsImage && mentionsUnsupported;
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  if (typeof error === "object") {
+    // OpenAI/Anthropic SDK errors nest the useful text under error.error.message.
+    const record = error as { message?: unknown; error?: { message?: unknown } };
+    const parts = [record.message, record.error?.message].filter((part): part is string => typeof part === "string");
+    if (parts.length > 0) return parts.join(" ");
+  }
+  return String(error);
+}
 
 function normalizeChatMode(value: unknown): ChatMode {
   return value === "no_context_fast" || value === "pdf_thinking" ? value : "pdf_fast";

@@ -1,8 +1,6 @@
 import { ArrowRight, BookOpen, Brain, Coffee, Library, Moon, Network, PanelRightOpen, PenLine, Settings, StickyNote, Sun, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type Book, type ChatAttachment } from "./api";
-import PdfPanel from "./components/pdf/PdfPanel";
-import MarkdownPanel from "./components/pdf/MarkdownPanel";
 import AssistantPanel from "./components/assistant/AssistantPanel";
 import BookManager from "./components/books/BookManager";
 import ProviderSettings from "./components/settings/ProviderSettings";
@@ -10,6 +8,8 @@ import NotesManager from "./components/notes/NotesManager";
 import WriterWorkspace from "./components/writer/WriterWorkspace";
 import AlgorithmLabWorkspace from "./components/algolab/AlgorithmLabWorkspace";
 import DistributedAlgorithmsWorkspace from "./components/distributed/DistributedAlgorithmsWorkspace";
+import ReaderWorkspace from "./components/reader/ReaderWorkspace";
+import MarkdownReader from "./components/reader/MarkdownReader";
 
 
 const ASSISTANT_MIN_WIDTH_PX = 360;
@@ -277,7 +277,6 @@ export default function App() {
             </button>
           </div>
           <div id="app-topbar-tools" className="topbar-tools" />
-          <div id="app-topbar-assistant" className="topbar-assistant" />
           <div className="topbar-right">
           <div className="theme-switcher" role="group" aria-label="Reading theme">
             {THEMES.map(({ id, label, icon: Icon }) => (
@@ -340,16 +339,10 @@ export default function App() {
           ref={workspaceRef}
         >
           {isMarkdownBook(activeBook) ? (
-            <MarkdownPanel
-              book={activeBook}
-              currentPage={currentPage}
-              onPageChange={updateCurrentPage}
-              selectedText={selectedText}
-              onSelectedText={setSelectedText}
-            />
+            <MarkdownReader book={activeBook} onSelectedText={setSelectedText} />
           ) : (
-            <PdfPanel
-              key={`pdf-${activeBook.id}-${pdfDataVersion}`}
+            <ReaderWorkspace
+              key={`reader-${activeBook.id}-${pdfDataVersion}`}
               book={activeBook}
               currentPage={currentPage}
               onPageChange={updateCurrentPage}

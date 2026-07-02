@@ -2,6 +2,7 @@ import { BookMarked, Pencil, Save, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, type Book, type Highlight } from "../../api";
 import MarkdownText from "../common/MarkdownText";
+import Modal from "../common/Modal";
 
 export default function NotesManager({
   book,
@@ -65,19 +66,19 @@ export default function NotesManager({
   }
 
   return (
-    <div className="modal-backdrop">
-      <section className="settings-modal notes-manager">
+    <Modal open onClose={onClose} unstyled ariaLabel="Notes">
+      <section className="settings-modal notes-manager" role="dialog" aria-modal="true" aria-labelledby="notes-manager-title">
         <div className="modal-header">
           <div>
-            <h2>Notes</h2>
+            <h2 id="notes-manager-title">Notes</h2>
             <p>{book.title ?? book.file_name}</p>
           </div>
-          <button className="icon-button" onClick={onClose} title="Close">
+          <button className="icon-button" onClick={onClose} title="Close" aria-label="Close">
             <X size={18} />
           </button>
         </div>
 
-        {error && <div className="inline-error">{error}</div>}
+        {error && <div className="inline-error" role="alert">{error}</div>}
 
         <div className="note-list">
           {notes.length === 0 && (
@@ -134,7 +135,7 @@ export default function NotesManager({
           ))}
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 

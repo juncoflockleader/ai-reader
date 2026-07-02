@@ -1,7 +1,6 @@
 import { ChevronDown, CornerDownRight, RefreshCw, Send, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
-import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { api, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice } from "../../api";
+import { api, modelIsKnownTextOnly, type AppSettings, type Book, type ChatAttachment, type ChatMessage, type ChatMode, type Conversation, type ModelChoice } from "../../api";
 import MarkdownText from "../common/MarkdownText";
 import { getAction } from "../../actions/registry";
 
@@ -229,6 +228,7 @@ export default function AssistantPanel({
   const currentModelChoice: ModelChoice = settings ? modelChoiceForMode(settings, chatMode) : { provider: "openai", model: "gpt-4.1-mini" };
 
   const providerLabel = providerDisplayLabel(currentModelChoice.provider);
+  const modelBlocksImages = modelIsKnownTextOnly(currentModelChoice.provider, currentModelChoice.model);
   const contextStatus = chatMode === "no_context_fast"
     ? "No context"
     : contextScope === "selection"
@@ -239,23 +239,21 @@ export default function AssistantPanel({
 
   return (
     <aside className="assistant-panel">
-      {createPortal(
-        <div className="assistant-topbar-group" role="status" aria-live="polite">
-          <span className="assistant-topbar-pill assistant-topbar-pill-multiline" title="Current provider, model, and context">
-            <strong>{providerLabel} · {currentModelChoice.model}</strong>
-            <small>{contextStatus}</small>
-          </span>
-          <button
-            className="icon-button danger"
-            onClick={() => void clearChatHistory()}
-            disabled={busy || (historyMessages.length === 0 && messages.length === 0 && conversationId === null)}
-            title="Clear chat history"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>,
-        document.getElementById("app-topbar-assistant") ?? document.body
-      )}
+      <div className="assistant-header" role="status" aria-live="polite">
+        <span className="assistant-model-pill" title="Current provider, model, and context">
+          <strong>{providerLabel} · {currentModelChoice.model}</strong>
+          <small>{contextStatus}</small>
+        </span>
+        <button
+          className="icon-button danger"
+          onClick={() => void clearChatHistory()}
+          disabled={busy || (historyMessages.length === 0 && messages.length === 0 && conversationId === null)}
+          title="Clear chat history"
+          aria-label="Clear chat history"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
 
       <div className="chat-thread" ref={chatThreadRef}>
         {historyMessages.length > 0 && (
@@ -365,6 +363,11 @@ export default function AssistantPanel({
                 </button>
               </div>
             ))}
+          </div>
+        )}
+        {attachments.length > 0 && modelBlocksImages && (
+          <div className="composer-vision-warning" role="alert">
+            {providerLabel} · {currentModelChoice.model} can’t read images. Remove the screenshot or switch to a vision-capable model (e.g. Claude or GPT-4o) in Settings.
           </div>
         )}
         <textarea

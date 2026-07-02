@@ -139,6 +139,30 @@ export type WriterContextArtifact = {
   staleness: unknown;
 };
 
+/**
+ * Whether a provider/model is *known* to be text-only. Mirrors the backend
+ * `modelIsKnownTextOnly` (src/backend/services/llm/index.ts) so the composer can
+ * warn before sending a screenshot a model can't read. High-confidence denylist
+ * that fails open — the backend (pre-flight + runtime backstop) remains
+ * authoritative; this is a proactive UX hint only.
+ */
+export function modelIsKnownTextOnly(provider: ProviderId, model: string): boolean {
+  const m = model.toLowerCase();
+  if (/vision|multimodal|omni|(^|[-_])vl(\d|[-_]|$)/.test(m)) return false;
+  switch (provider) {
+    case "openai":
+      return /gpt-3\.5|text-|davinci|babbage|ada|whisper|embedding/.test(m);
+    case "anthropic":
+      return /claude-2|claude-instant/.test(m);
+    case "deepseek":
+      return true;
+    case "doubao":
+      return false;
+    default:
+      return false;
+  }
+}
+
 export class ApiError extends Error {
   status: number;
   payload: unknown;

@@ -1,6 +1,7 @@
 import { Eraser, RefreshCw, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { api, type Book } from "../../api";
+import Modal from "../common/Modal";
 
 type Props = {
   books: Book[];
@@ -86,14 +87,14 @@ export default function BookManager({ books, activeBook, onClose, onBooksChanged
   }
 
   return (
-    <div className="modal-backdrop">
-      <section className="settings-modal book-manager">
+    <Modal open onClose={onClose} unstyled ariaLabel="Book management">
+      <section className="settings-modal book-manager" role="dialog" aria-modal="true" aria-labelledby="book-manager-title">
         <div className="modal-header">
           <div>
-            <h2>Book Management</h2>
+            <h2 id="book-manager-title">Book Management</h2>
             <p>Rename books, delete local data, or rebuild page text and search chunks from the original PDF.</p>
           </div>
-          <button className="icon-button" onClick={onClose} title="Close">
+          <button className="icon-button" onClick={onClose} title="Close" aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -133,10 +134,10 @@ export default function BookManager({ books, activeBook, onClose, onBooksChanged
         </div>
 
         <div className="modal-actions">
-          <span>{status}</span>
+          <span role="status">{status}</span>
           <button className="primary-button compact" onClick={onClose}>Done</button>
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }

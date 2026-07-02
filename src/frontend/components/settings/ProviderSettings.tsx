@@ -1,6 +1,7 @@
 import { KeyRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, type AppSettings, type ChatMode, type ModelChoice, type ProviderId } from "../../api";
+import Modal from "../common/Modal";
 
 const chatModeLabels: Record<ChatMode, string> = {
   no_context_fast: "No context",
@@ -209,14 +210,14 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
   }
 
   return (
-    <div className="modal-backdrop">
-      <section className="settings-modal">
+    <Modal open onClose={onClose} unstyled ariaLabel="LLM settings">
+      <section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="provider-settings-title">
         <div className="modal-header">
           <div>
-            <h2>LLM Settings</h2>
+            <h2 id="provider-settings-title">LLM Settings</h2>
             <p>Your PDF files stay local. Questions send selected context to the provider you choose.</p>
           </div>
-          <button className="icon-button" onClick={onClose} title="Close">
+          <button className="icon-button" onClick={onClose} title="Close" aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -331,14 +332,14 @@ export default function ProviderSettings({ onClose, onSaved }: { onClose: () => 
         </label>
 
         <div className="modal-actions">
-          <span>{status}</span>
+          <span role="status">{status}</span>
           <button onClick={test}>Test</button>
           <button className="primary-button compact" onClick={save}>
             Save
           </button>
         </div>
       </section>
-    </div>
+    </Modal>
   );
 }
 

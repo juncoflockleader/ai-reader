@@ -20,7 +20,7 @@ export const actionRegistry: Record<string, ActionDefinition> = {
     label: "Summarize",
     description: "Summarize the active selection",
     icon: MessageSquareText,
-    shortcut: "S",
+    shortcut: "Ctrl+S",
     contexts: ["text-selection"],
     placements: ["context-menu"]
   },
@@ -29,7 +29,7 @@ export const actionRegistry: Record<string, ActionDefinition> = {
     label: "Highlight",
     description: "Save the active selection as a highlight",
     icon: Highlighter,
-    shortcut: "H",
+    shortcut: "Ctrl+N",
     contexts: ["text-selection"],
     placements: ["toolbar", "context-menu"]
   },

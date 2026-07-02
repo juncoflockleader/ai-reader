@@ -219,49 +219,37 @@ button:disabled {
 }
 
 
-.topbar-assistant {
-  min-width: 0;
+/* In-panel assistant header (provider/model/context + clear), replaces the old topbar portal. */
+.assistant-header {
   display: flex;
   align-items: center;
-}
-
-.assistant-topbar-group {
-  display: inline-flex;
-  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 4px;
-  background: var(--surface-glass);
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
 }
 
-.assistant-topbar-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 10px;
+.assistant-model-pill {
+  display: grid;
+  align-items: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--accent-soft);
   color: var(--text-primary);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.assistant-topbar-pill-multiline {
-  display: grid;
-  align-items: start;
-  gap: 2px;
-  white-space: normal;
   line-height: 1.15;
 }
 
-.assistant-topbar-pill-multiline strong {
+.assistant-model-pill strong {
   font-size: 12px;
   font-weight: 700;
 }
 
-.assistant-topbar-pill-multiline small {
+.assistant-model-pill small {
   color: var(--text-secondary);
   font-size: 11px;
 }
@@ -1794,6 +1782,17 @@ button:disabled {
   display: flex;
   gap: 8px;
   overflow-x: auto;
+}
+
+.composer-vision-warning {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--danger, #d9534f);
+  background: var(--danger-soft, rgba(217, 83, 79, 0.12));
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .composer-attachment {
